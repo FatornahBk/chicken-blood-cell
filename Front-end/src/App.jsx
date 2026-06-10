@@ -8,8 +8,8 @@ import Prediction from "./pages/Prediction";
 import Profile from "./pages/Profile"; // ✅ เพิ่มตรงนี้
 
 function ProtectedRoute({ children }) {
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  if (!user) return <Navigate to="/login" replace />;
+  const token = localStorage.getItem("access_token");
+  if (!token) return <Navigate to="/login" replace />;
   return children;
 }
 
