@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import Searchbar from "../components/Searchbar_profile";
@@ -18,38 +18,60 @@ const IconUnpredicted = (
   </svg>
 );
 
-// ─── Profile Banner ───────────────────────────────────────────────────────────
 function ProfileBanner({ name, email, postCount, avatarUrl }) {
   return (
-    <div
-      className="relative rounded-xl overflow-hidden mb-6 flex items-center justify-between px-6 py-5"
-      style={{ background: "linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%)" }}
-    >
-      <div className="flex items-center gap-4">
+    <div className="relative rounded-xl mb-6" style={{ boxShadow: "0 1px 6px rgba(0,0,0,0.10)" }}>
+
+      {/* ส่วนบน: ฟ้า */}
+      <div
+        className="rounded-t-xl flex items-center justify-between px-6 py-4"
+        style={{
+          background: "linear-gradient(to right, #deeaf5 0%, #b8d4ec 40%, #5a8fbf 75%, #3a7aad 100%)",
+          paddingLeft: "116px",
+          minHeight: "56px",
+        }}
+      >
+        <h2 className="text-lg font-semibold" style={{ color: "#1a2f45" }}>{name}</h2>
+        <div className="text-right">
+          <span className="text-2xl font-semibold" style={{ color: "#e8a020" }}>{postCount}</span>
+          <span className="text-sm ml-1" style={{ color: "#4a6a85" }}>Posts</span>
+          <div style={{ height: "2px", background: "#e8a020", marginTop: "2px" }} />
+        </div>
+      </div>
+
+      {/* ส่วนล่าง: ขาว */}
+      <div
+        className="rounded-b-xl bg-white py-3 px-6"
+        style={{ paddingLeft: "116px", minHeight: "72px" }}
+      >
+        <p className="text-sm mb-2" style={{ color: "#6b8ca8" }}>{email}</p>
+        <div className="flex gap-2">
+          <button className="px-4 py-1 rounded-full text-xs font-medium bg-white border border-gray-400 text-gray-700">
+            Admin
+          </button>
+          <button className="px-4 py-1 rounded-full text-xs font-medium text-white" style={{ background: "#1a2f45" }}>
+            Edit Profile
+          </button>
+        </div>
+      </div>
+
+      {/* Avatar + วงกลมขาว คาบรอยต่อ */}
+      <div
+        className="absolute rounded-full bg-white flex items-center justify-center"
+        style={{ left: "20px", top: "50%", transform: "translateY(-50%)", width: "80px", height: "80px", zIndex: 10 }}
+      >
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="w-16 h-16 rounded-full border-2 border-white/40 object-cover" />
+          <img src={avatarUrl} alt={name} className="rounded-full object-cover" style={{ width: "66px", height: "66px" }} />
         ) : (
-          <div className="w-16 h-16 rounded-full border-2 border-white/40 bg-blue-200 flex items-center justify-center text-2xl font-semibold text-blue-900">
+          <div
+            className="rounded-full flex items-center justify-center text-xl font-semibold"
+            style={{ width: "66px", height: "66px", background: "#b8d4e8", color: "#1a3a5c" }}
+          >
             {name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
           </div>
         )}
-        <div>
-          <h2 className="text-xl font-bold text-white">{name}</h2>
-          <p className="text-sm text-white/70 mb-2">{email}</p>
-          <div className="flex gap-2">
-            <button className="px-4 py-1 rounded-full text-xs font-medium border border-white/40 text-white">
-              Admin
-            </button>
-            <button className="px-4 py-1 rounded-full text-xs font-medium bg-white text-blue-900">
-              Edit Profile
-            </button>
-          </div>
-        </div>
       </div>
-      <div className="text-right">
-        <p className="text-3xl font-bold text-amber-400">{postCount}</p>
-        <p className="text-xs text-white/70">Posts</p>
-      </div>
+
     </div>
   );
 }
@@ -74,11 +96,29 @@ function SectionHeader({ icon, title }) {
  * { images, title, status, issueId, chickenType, province, age, stainType,
  *   uploaderName, uploaderRole, uploaderDate, avatarUrl, isPredicted }
  */
-export default function ProfilePage({ user = {}, smears = [] }) {
+export default function ProfilePage({ smears = [] }) {
+  const [user, setUser]                 = useState({});
   const [query, setQuery]               = useState("");
   const [chickenType, setChickenType]   = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortAsc, setSortAsc]           = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    fetch("/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setUser({
+          name:      data.name      ?? data.username ?? "",
+          email:     data.email     ?? "",
+          postCount: data.postCount ?? data.total_posts ?? 0,
+          avatarUrl: data.avatarUrl ?? data.avatar_url ?? null,
+        });
+      })
+      .catch((err) => console.error("Failed to fetch user:", err));
+  }, []);
 
   const filtered = useMemo(() => {
     let data = [...smears];

@@ -1,21 +1,20 @@
 import React, { useState, useRef } from "react";
 import NavbarWelcome from "../components/navbar_welcome";
-import bgImage from "../assets/Background.png";
 import Footer from "../components/footer";
 import { TestTube2 } from "lucide-react";
-import { predictBloodCell9k, predictBloodCell4kr } from "../services/predict";
+import { predictBloodCell9k, predictBloodCell4kr } from "../services/predict.js";
 
 const STAINS = [
   {
     key: "wright",
     label: "Wright",
-    desc: "การย้อมเลือดทั่วไป เห็นโครงสร้างหลักของเซลล์",
+    desc: "General blood staining reveals the main structural features of cells.",
     image: "/src/assets/Wright.png",
   },
   {
     key: "giemsa",
     label: "Giemsa",
-    desc: "การย้อมที่ให้รายละเอียดสูง เห็นโครงสร้างลึกและปรสิตชัด",
+    desc: "Provides detailed visualization of cellular structures and enables clear identification of parasites.",
     image: "/src/assets/Gimsa.png",
   },
 ];
@@ -332,7 +331,7 @@ const Welcome = () => {
       setTimeout(() => drawBoundingBoxes(response), 100);
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+      alert("An error has occurred. Please try again.");
     }
   };
 
@@ -374,7 +373,7 @@ const Welcome = () => {
                     {label}
                     <TestTube2 size={18} color="#8fa8c8" />
                   </p>
-                  <p className="text-[12px] text-[#8a9ab5]">{desc}</p>
+                  <p className="text-[12px] text-[#8a9ab5] text-left">{desc}</p>
                 </div>
               </div>
             ))}

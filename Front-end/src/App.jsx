@@ -5,7 +5,9 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Upload from "./pages/Upload";
 import Prediction from "./pages/Prediction";
-import Profile from "./pages/Profile"; // ✅ เพิ่มตรงนี้
+import Profile from "./pages/Profile";
+import PredictionLogsPage from "./pages/PredictionOutput";
+import PredictionDetail from "./pages/PredictionDetail";
 
 function ProtectedRoute({ children }) {
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -17,15 +19,18 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Welcome />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-        <Route path="/prediction" element={<ProtectedRoute><Prediction /></ProtectedRoute>} />
-        {/* ✅ เพิ่ม route นี้ */}
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      </Routes>
+  <Route path="/" element={<Welcome />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+  <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+  <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+  <Route path="/prediction" element={<ProtectedRoute><Prediction /></ProtectedRoute>} />
+  <Route path="/prediction/output" element={<ProtectedRoute><PredictionLogsPage /></ProtectedRoute>} />
+
+  {/*ชั่วคราว */}
+  <Route path="/prediction/:id" element={<ProtectedRoute><PredictionDetail /></ProtectedRoute>} />
+  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+</Routes>
     </BrowserRouter>
   );
 }

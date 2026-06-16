@@ -9,6 +9,7 @@ import BloodCellCard from "../components/BloodCellCard";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import logo from "../assets/Chicken-CBC.png";
+import BloodCellDetailModal from "../components/BloodCellDetailModal";
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 // Replace with real API calls (e.g. useEffect + fetch / React Query)
@@ -209,6 +210,7 @@ const CardGrid = ({ cards, onCardClick }) => {
 
 // ─── HomePage ────────────────────────────────────────────────────────────────
 const HomePage = () => {
+  const [selectedCard, setSelectedCard] = useState(null);
   const [filteredCards, setFilteredCards] = useState(MOCK_CARDS);
 
   const handleSearch = (query) => {
@@ -247,9 +249,8 @@ const HomePage = () => {
   };
 
   const handleCardClick = (card) => {
-    console.log("Navigate to card detail:", card.id);
-    // e.g. navigate(`/prediction/${card.id}`)
-  };
+  setSelectedCard(card);
+};
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -262,14 +263,21 @@ const HomePage = () => {
           onSortChange={handleSortChange}
         />
 
-        <section className="px-4 pb-16 max-w-5xl mx-auto">
+        <section className="w-full px-4 pb-16 max-w-[1400px] mx-auto">
           <CardGrid cards={filteredCards} onCardClick={handleCardClick} />
         </section>
       </main>
 
       <Footer />
-    </div>
-  );
+
+    {selectedCard && (
+      <BloodCellDetailModal
+        data={selectedCard}
+        onClose={() => setSelectedCard(null)}
+      />
+    )}
+  </div>
+);
 };
 
 export default HomePage;

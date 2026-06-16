@@ -1,209 +1,95 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { getPendingBatches } from "../services/prediction";
 
-const mockSamples = [
-  // ── Wright Stain ──
-  {
-    id: "EW-2541",
-    stainType: "wright",
-    chickenType: "Laying hen",
-    age: "6 months",
-    province: "Nakhon Si Thammarat",
-    images: Array(20).fill(null).map((_, i) => ({
-      id: i, name: `name of img.png`, selected: true, url: null,
-    })),
-  },
-  {
-    id: "EW-2874",
-    stainType: "wright",
-    chickenType: "Broiler",
-    age: "3 months",
-    province: "Nakhon Si Thammarat",
-    images: Array(20).fill(null).map((_, i) => ({
-      id: i, name: `name of img.png`, selected: true, url: null,
-    })),
-  },
+function SampleCard({ sample, onClick }) {
+  const firstImage = sample.images?.[0];
+  const imageUrl = firstImage
+    ? `http://localhost/api/${firstImage.image_path.replace(/\\/g, "/")}`
+    : null;
 
-  // ── Giemsa Stain ──
-  {
-    id: "EG-3001",
-    stainType: "giemsa",
-    chickenType: "Broiler",
-    age: "4 months",
-    province: "Chiang Mai",
-    images: Array(15).fill(null).map((_, i) => ({
-      id: i, name: `name of img.png`, selected: true, url: null,
-    })),
-  },
-  {
-    id: "EG-3002",
-    stainType: "giemsa",
-    chickenType: "Laying hen",
-    age: "8 months",
-    province: "Bangkok",
-    images: Array(18).fill(null).map((_, i) => ({
-      id: i, name: `name of img.png`, selected: true, url: null,
-    })),
-  },
-];
-
-// ---- ImageCard ----
-function ImageCard({ image, onToggle }) {
   return (
     <div
-      className="relative flex-shrink-0 cursor-pointer"
-      style={{ width: 105, height: 118 }}
-      onClick={() => onToggle(image.id)}
+      onClick={onClick}
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-300 transition-all duration-150 overflow-hidden mb-3 cursor-pointer"
     >
-      <div
-        className={`w-full rounded-2xl overflow-hidden transition-opacity duration-200 ${
-          image.selected ? "opacity-100" : "opacity-35"
-        }`}
-        style={{ height: 98 }}
-      >
-        {image.url ? (
-          <img src={image.url} alt={image.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-orange-300 rounded-2xl" />
-        )}
-      </div>
-      {image.selected && (
-        <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-sky-400 rounded-full flex items-center justify-center shadow-sm">
-          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-      )}
-      <p className="text-center text-gray-400 mt-1 truncate px-1" style={{ fontSize: 10 }}>
-        {image.name}
-      </p>
-    </div>
-  );
-}
-
-// ---- SampleCard ----
-function SampleCard({ sample, onToggleImage, onSelectAll }) {
-  const allSelected = sample.images.every((img) => img.selected);
-  const selectedCount = sample.images.filter((img) => img.selected).length;
-
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-      <div className="flex" style={{ minHeight: 300, maxHeight: 320 }}>
-
-        {/* ── Left grey info panel ── */}
-        <div className="flex-shrink-0 bg-gray-100 p-4" style={{ width: 220 }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-bold text-gray-800 text-sm">{sample.id}</span>
-            <label className="flex items-center gap-1 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={() => onSelectAll(sample.id, !allSelected)}
-                className="w-3.5 h-3.5 accent-sky-500"
+      <div className="flex items-center gap-6 px-3 py-3">
+        <div className="flex-shrink-0 w-34 h-28 bg-gray-200 rounded-xl overflow-hidden flex items-center justify-center">
+          {imageUrl ? (
+            <img src={imageUrl} alt={firstImage.image_name} className="w-full h-full object-cover" />
+          ) : (
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
-              <span className="text-xs text-gray-500 font-medium">SELECT ALL</span>
-            </label>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Chicken type :</span>{" "}
-              <span className="text-gray-500">{sample.chickenType}</span>
-            </p>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Age :</span>{" "}
-              <span className="text-gray-500">{sample.age}</span>
-            </p>
-            <p className="text-xs text-gray-400 pt-2">Province : {sample.province}</p>
-          </div>
+            </svg>
+          )}
         </div>
-
-        {/* ── Right image area ── */}
-        <div className="flex-1 bg-white flex flex-col min-w-0">
-
-          {/* Badge top-right */}
-          <div className="flex justify-end px-3 pt-2 pb-0 flex-shrink-0">
-            <span className="bg-gray-500 text-white text-xs font-medium px-3 py-0.5 rounded-full">
-              {selectedCount} Images
-            </span>
-          </div>
-
-          {/* Grid หลายแถว + vertical scroll */}
-          <div
-            className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3"
-            style={{ scrollbarWidth: "thin", scrollbarColor: "#d1d5db transparent" }}
-          >
-            <div
-              className="grid gap-3"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(105px, 1fr))" }}
-            >
-              {sample.images.map((image) => (
-                <ImageCard
-                  key={image.id}
-                  image={image}
-                  onToggle={(imgId) => onToggleImage(sample.id, imgId)}
-                />
-              ))}
-            </div>
-          </div>
-
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-800 text-sm mb-1">{sample.smear_id}</p>
+          <p className="text-sm text-gray-600">Chicken type : {sample.chicken_type}</p>
+          <p className="text-sm text-gray-600">Age : {sample.age} weeks</p>
+          <p className="text-xs text-gray-400 mt-0.5">Province : {sample.province}</p>
+        </div>
+        <div className="flex-shrink-0">
+          <span className="bg-gray-500 text-white text-xs font-medium px-3 py-1 rounded-full">
+            {sample.images.length} Images
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-// ---- Prediction Page ----
 const Prediction = () => {
-  const [activeTab, setActiveTab] = useState("wright");
-  const [samples, setSamples] = useState(mockSamples);
-  const [isPredicting, setIsPredicting] = useState(false);
+  const [activeTab, setActiveTab] = useState("Wright");
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
 
-  const totalSelected = samples
-  .filter((s) => s.stainType === activeTab) 
-  .reduce((acc, s) => acc + s.images.filter((img) => img.selected).length, 0);
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        setLoading(true);
+        const result = await getPendingBatches(activeTab, currentPage);
+        setBatches(result.data);
+        setTotalPages(result.meta.total_pages);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBatches();
+  }, [activeTab, currentPage]);
 
-  const handleToggleImage = (sampleId, imageId) => {
-    setSamples((prev) =>
-      prev.map((s) =>
-        s.id === sampleId
-          ? {
-              ...s,
-              images: s.images.map((img) =>
-                img.id === imageId ? { ...img, selected: !img.selected } : img
-              ),
-            }
-          : s
-      )
-    );
-  };
-
-  const handleSelectAll = (sampleId, val) => {
-    setSamples((prev) =>
-      prev.map((s) =>
-        s.id === sampleId
-          ? { ...s, images: s.images.map((img) => ({ ...img, selected: val })) }
-          : s
-      )
-    );
-  };
-
-  const handlePredictAll = async () => {
-    setIsPredicting(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsPredicting(false);
-    alert(`Prediction complete for ${totalSelected} images!`);
+  const getPageNumbers = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) return [1, 2, 3, "...", totalPages];
+    if (currentPage >= totalPages - 2) return [1, "...", totalPages - 2, totalPages - 1, totalPages];
+    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
   };
 
   return (
     <>
       <Navbar activePage="Prediction" />
-
-      <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100">
-        <div className="max-w-4xl mx-auto px-4 py-10">
-
-          {/* Header */}
-          <div className="text-center mb-8">
+      <div
+        className="min-h-screen flex flex-col"
+        style={{
+          backgroundImage: "url('/src/assets/VerifyUsers.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-2 py-10 flex-1 w-full">
+          <div className="text-center py-12">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">Prediction</h1>
             <p className="text-gray-500 text-sm font-medium">
               Upload a blood smear image to analyze chicken blood cells
@@ -214,12 +100,15 @@ const Prediction = () => {
           <div className="mb-5">
             <div className="inline-flex bg-white rounded-xl border border-gray-200 p-1 gap-1">
               {[
-                { key: "wright", label: "Wright Stain" },
-                { key: "giemsa", label: "Giemsa Stain" },
+                { key: "Wright", label: "Wright Stain" },
+                { key: "Giemsa", label: "Giemsa Stain" },
               ].map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setCurrentPage(1);
+                  }}
                   className={`px-6 py-2.5 text-sm font-semibold transition-colors duration-150 relative ${
                     activeTab === tab.key
                       ? "text-gray-800 bg-white"
@@ -235,47 +124,55 @@ const Prediction = () => {
             </div>
           </div>
 
-          {/* Sample Cards */}
-          <div>
-  {samples
-    .filter((s) => s.stainType === activeTab)   
-    .map((sample) => (
-      <SampleCard
-        key={sample.id}
-        sample={sample}
-        onToggleImage={handleToggleImage}
-        onSelectAll={handleSelectAll}
-      />
-    ))}
-</div>
+          {/* Cards */}
+          {loading ? (
+            <p className="text-center text-gray-400 text-sm">Loading...</p>
+          ) : batches.length === 0 ? null : (
+            batches.map((sample) => (
+              <SampleCard
+                key={sample.batch_id}
+                sample={sample}
+                onClick={() => navigate(`/prediction/${sample.batch_id}`, { state: { smear: sample } })}
+              />
+            ))
+          )}
 
-          {/* Predict All Button */}
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={handlePredictAll}
-              disabled={totalSelected === 0 || isPredicting}
-              className={`flex items-center gap-2 px-12 py-4 rounded-2xl text-white font-semibold text-base shadow-lg transition-all duration-200 ${
-                totalSelected > 0 && !isPredicting
-                  ? "bg-gray-600 hover:bg-gray-700 hover:shadow-xl active:scale-95"
-                  : "bg-gray-400 cursor-not-allowed"
-              }`}
-            >
-              {isPredicting ? (
-                <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Predicting...
-                </>
-              ) : (
-                <>
-                  <span className="text-yellow-300 text-lg leading-none">✦</span>
-                  Predict All ({totalSelected})
-                </>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 mt-6">
+              <button
+                onClick={() => setCurrentPage((p) => p - 1)}
+                disabled={currentPage === 1}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-2xl"
+              >
+                ‹
+              </button>
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span key={`dot-${idx}`} className="w-9 h-9 flex items-center justify-center text-gray-400 text-sm">…</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium border transition-colors duration-150 ${
+                      currentPage === page
+                        ? "bg-gray-700 text-white border-gray-700"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
               )}
-            </button>
-          </div>
+              <button
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={currentPage === totalPages}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-2xl"
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
         <Footer />
       </div>
