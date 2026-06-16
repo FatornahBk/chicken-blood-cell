@@ -102,6 +102,13 @@ const Navbar = ({ activePage = "Home" }) => {
               {label}
             </button>
           ))}
+          {/* Admin จะเห็นก็ต่อเมื่อ role เป็น admin เท่านั้น */}
+          <button
+            onClick={() => handleNav("Admin", "/admin")}
+            className="rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-blue-600"
+          >
+            Admin
+          </button>
         </div>
 
         {/* ── ขวา: Globe + User ── */}

@@ -187,7 +187,8 @@ const CardGrid = ({ cards, onCardClick }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    //  Responsive grid: 1 col on mobile, 2 on tablet, 4 on desktop
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"> 
       {cards.map((card) => (
         <BloodCellCard
           key={card.id}
@@ -262,8 +263,13 @@ const HomePage = () => {
           onFilterChickenType={handleFilterChickenType}
           onSortChange={handleSortChange}
         />
+<<<<<<< HEAD
 
         <section className="w-full px-4 pb-16 max-w-[1400px] mx-auto">
+=======
+          {/* ความกว้างสูงสุด 1400px, centered, padding รอบ */}
+        <section className="w-full px-4 pb-16 max-w-[1400px] mx-auto">  
+>>>>>>> 79e0ad3d1f54e69d53adf10ad259d9ada2ee3060
           <CardGrid cards={filteredCards} onCardClick={handleCardClick} />
         </section>
       </main>

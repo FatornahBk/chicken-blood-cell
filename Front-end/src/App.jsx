@@ -10,8 +10,8 @@ import PredictionLogsPage from "./pages/PredictionOutput";
 import PredictionDetail from "./pages/PredictionDetail";
 
 function ProtectedRoute({ children }) {
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  if (!user) return <Navigate to="/login" replace />;
+  const token = localStorage.getItem("access_token");
+  if (!token) return <Navigate to="/login" replace />;
   return children;
 }
 
