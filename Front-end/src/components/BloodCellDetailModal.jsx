@@ -1,45 +1,235 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { getImageUrl } from "../services/api";
 
-
-const cellData = {
-  doctorName: "Dr. Strange",
-  doctorDate: "10 มี.ค. 2569",
-  doctorAvatar: "https://i.pravatar.cc/40?img=12",
-  smearId: "AV-99215",
-  chickenType: "Laying hen",
-  province: "Nakhon Si Thammarat",
-  age: "20 week",
-  stainType: "Wrigth stain",
-  distribution: [
-    { label: "Monocyte", percent: 35, color: "#60a5fa" },
-    { label: "Lymphocyte", percent: 48, color: "#fb923c" },
-    { label: "Basophil", percent: 76, color: "#c084fc" },
-  ],
-  total: 20,
-  mainImage: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat_03.jpg/1200px-Cat_03.jpg",
+const CELL_COLORS = {
+  Basophil: "#9b5de5",
+  Eosinophil: "#f15bb5",
+  Heterophil: "#00bbf9",
+  Lymphocyte: "#06b6a2",
+  Monocyte: "#ca8a04",
+  Thrombocyte: "#fb5607",
 };
 
-export default function BloodCellDetailModal({ data = cellData, onClose }) {
-  const [activeThumb, setActiveThumb] = useState(0);
-  const [thumbStart, setThumbStart] = useState(0);
+// draws the image letterboxed inside the canvas + bounding boxes on top
+// `detections` is the flat array from the API: [{ bbox: {x1,y1,x2,y2,width,height}, class_name, confidence }, ...]
+const drawBoundingBoxes = (canvas, img, detections, width, height) => {
+  if (!canvas || !img || !img.naturalWidth || !width || !height) return;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const info = data || cellData;
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const canvasAspect = canvas.width / canvas.height;
+  let drawW, drawH, drawX, drawY;
+  if (imgAspect > canvasAspect) {
+    drawW = canvas.width;
+    drawH = canvas.width / imgAspect;
+  } else {
+    drawH = canvas.height;
+    drawW = canvas.height * imgAspect;
+  }
+  drawX = (canvas.width - drawW) / 2;
+  drawY = (canvas.height - drawH) / 2;
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+  if (!detections || detections.length === 0) return;
+
+  const scaleX = drawW / img.naturalWidth;
+  const scaleY = drawH / img.naturalHeight;
+
+  detections.forEach(({ bbox, class_name, confidence }) => {
+    const color = CELL_COLORS[class_name] || "#999999";
+    const { x1, y1, width, height } = bbox;
+    const rx = drawX + x1 * scaleX;
+    const ry = drawY + y1 * scaleY;
+    const rw = width * scaleX;
+    const rh = height * scaleY;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rx, ry, rw, rh);
+
+    const label = `${class_name} ${(confidence * 100).toFixed(1)}%`;
+    ctx.font = "bold 11px sans-serif";
+    const textW = ctx.measureText(label).width;
+    let labelY = ry - 16;
+    if (labelY < 0) labelY = ry + rh + 2;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(rx, labelY, textW + 6, 16);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, rx + 3, labelY + 12);
+  });
+};
+
+export default function BloodCellDetailModal({
+  data,
+  onClose,
+  initialThumbIndex = 0,
+  onProfileClick,
+}) {
+  const [activeThumb, setActiveThumb] = useState(initialThumbIndex);
+  const [thumbStart, setThumbStart] = useState(() =>
+    Math.max(0, initialThumbIndex - 3),
+  );
+
+  const info = data || {};
   const smearId = info.smearId || info.issueId;
-const doctorName = info.doctorName || info.uploaderName;
-const thumbnails = info.thumbnails || info.images || [];
+  const doctorName = info.doctorName || info.uploaderName;
+  const doctorId = info.doctorId || info.uploaderId || info.userId || null;
+  // The API can provide a URL string or an image object ({ image_path },
+  // { image_url }, { url }). Normalize both formats before rendering.
+  const thumbnails = (info.thumbnails || info.images || [])
+    .map((image) => {
+      const path =
+        typeof image === "string"
+          ? image
+          : image?.url || image?.image_url || image?.image_path || image?.path;
+
+      if (!path) return null;
+      return /^https?:\/\//i.test(path) ? path : getImageUrl(path);
+    })
+    .filter(Boolean);
+  const description =
+    info.description && info.description !== "-"
+      ? info.description
+      : info.title && info.title !== "-"
+        ? info.title
+        : "";
+  const doctorDate =
+    info.doctorDate ||
+    info.uploaderDate ||
+    (info.predictedAt
+      ? new Date(info.predictedAt).toLocaleDateString("th-TH")
+      : "");
+  const doctorAvatarPath =
+    info.doctorAvatar ||
+    info.uploaderAvatar ||
+    info.avatarUrl ||
+    info.profile_image ||
+    info.profileImage ||
+    info.owner?.profile_image ||
+    null;
+  const doctorAvatar = doctorAvatarPath
+    ? /^https?:\/\//i.test(doctorAvatarPath)
+      ? doctorAvatarPath
+      : getImageUrl(doctorAvatarPath)
+    : null;
+  const imageDetails = info.imageDetails || [];
+  const activePrediction = imageDetails[activeThumb]?.prediction || null;
+
+  const distribution = activePrediction
+    ? Object.entries(activePrediction.cell_percentages || {}).map(
+        ([label, percent]) => ({
+          label,
+          percent,
+          color: CELL_COLORS[label] || "#94a3b8",
+        }),
+      )
+    : info.distribution || [];
+
+  const total = activePrediction
+    ? Object.values(activePrediction.cell_counts || {}).reduce(
+        (sum, c) => sum + c,
+        0,
+      )
+    : (info.total ?? distribution.reduce((sum, d) => sum + d.percent, 0));
+
+  const rawAge = info.age;
+  const age =
+    rawAge === undefined || rawAge === null || rawAge === ""
+      ? rawAge
+      : /week/i.test(String(rawAge))
+        ? rawAge
+        : `${rawAge} weeks`;
+
+  useEffect(() => {
+    setActiveThumb(initialThumbIndex);
+    setThumbStart(Math.max(0, initialThumbIndex - 3));
+  }, [info.smearId, initialThumbIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft") {
+        handlePrevThumb();
+      } else if (e.key === "ArrowRight") {
+        handleNextThumb();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [thumbnails.length]);
+
+  const updateActiveThumb = (newIndex) => {
+    const clamped = Math.max(0, Math.min(thumbnails.length - 1, newIndex));
+    setActiveThumb(clamped);
+    setThumbStart((prevStart) => {
+      if (clamped < prevStart) return clamped;
+      if (clamped > prevStart + 3) return clamped - 3;
+      return prevStart;
+    });
+  };
 
   const handlePrevThumb = () => {
-    setThumbStart((prev) => Math.max(0, prev - 1));
+    updateActiveThumb(activeThumb - 1);
   };
 
   const handleNextThumb = () => {
-  setThumbStart((prev) => Math.min(thumbnails.length - 3, prev + 1));
+    updateActiveThumb(activeThumb + 1);
+  };
+
+  const navigate = useNavigate();
+const handleProfileClick = () => {
+  if (!doctorId) return;
+  if (typeof onProfileClick === "function") {
+    onProfileClick(doctorId, info);
+  }
+  onClose();
+  navigate(`/profile/${doctorId}`);
 };
+
+  const canvasRef = useRef(null);
+  const imageRef = useRef(null);
+  const outerRef = useRef(null);
+  const [boxSize, setBoxSize] = useState(null);
+  const MAX_HEIGHT = 420;
+
+  const draw = () => {
+    const img = imageRef.current;
+    const outer = outerRef.current;
+    if (img && img.naturalWidth && outer) {
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const containerWidth = outer.offsetWidth;
+      let w = MAX_HEIGHT * aspect;
+      let h = MAX_HEIGHT;
+      if (w > containerWidth) {
+        w = containerWidth;
+        h = containerWidth / aspect;
+      }
+      setBoxSize({ width: w, height: h });
+      drawBoundingBoxes(
+        canvasRef.current,
+        img,
+        activePrediction?.detections,
+        w,
+        h,
+      );
+    }
+  };
+
+  useEffect(() => {
+    const img = imageRef.current;
+    if (img && img.complete && img.naturalWidth) {
+      draw();
+    }
+  }, [activeThumb]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div
-        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden"
+        className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden"
         style={{ fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif" }}
       >
         {/* Header */}
@@ -58,33 +248,53 @@ const thumbnails = info.thumbnails || info.images || [];
               />
             </svg>
           </button>
-          <h2 className="text-base font-semibold text-slate-700 tracking-wide">
-            ตรวจหาเม็ดเลือดขาวของไก่ที่ผมเลี้ยงกับมือ
-          </h2>
+          {description && (
+            <h2 className="text-base font-semibold text-slate-700 tracking-wide">
+              {description}
+            </h2>
+          )}
         </div>
 
         {/* Body */}
         <div className="flex gap-5 p-5">
           {/* Left: image section */}
           <div className="flex flex-col gap-3 flex-1 min-w-0">
-            {/* Main image */}
-            <div className="rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 aspect-[4/3] w-full">
-              <img
-                src={thumbnails[activeThumb] || info.mainImage}
-                alt="blood smear"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src =
-                    "https://placehold.co/400x300/f3e8ff/a855f7?text=Blood+Smear";
+            {/* Main image with bounding box canvas (static, no zoom/pan) */}
+
+            <div
+              ref={outerRef}
+              className="w-full flex justify-center items-center"
+              style={{ minHeight: MAX_HEIGHT }}
+            >
+              <div
+                className="relative rounded-lg overflow-hidden border border-slate-100 transition-all duration-150"
+                style={{
+                  background: "#f1f5f9",
+                  ...(boxSize
+                    ? { width: boxSize.width, height: boxSize.height }
+                    : { width: 0, height: 0 }),
                 }}
-              />
+              >
+                <img
+                  ref={imageRef}
+                  src={thumbnails[activeThumb] || info.mainImage}
+                  alt="blood smear"
+                  style={{ display: "none" }}
+                  onLoad={draw}
+                  onError={(e) => {
+                    e.target.src =
+                      "https://placehold.co/400x300/f3e8ff/a855f7?text=Blood+Smear";
+                  }}
+                />
+                <canvas ref={canvasRef} className="w-full h-full" />
+              </div>
             </div>
 
             {/* Thumbnails */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-w-xl mx-auto">
               <button
                 onClick={handlePrevThumb}
-                disabled={thumbStart === 0}
+                disabled={activeThumb === 0}
                 className="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 flex items-center justify-center transition-colors"
               >
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
@@ -98,12 +308,12 @@ const thumbnails = info.thumbnails || info.images || [];
                 </svg>
               </button>
 
-              <div className="flex gap-2 flex-1 overflow-hidden">
+              <div className="flex gap-2 flex-1 justify-center overflow-hidden">
                 {thumbnails.slice(thumbStart, thumbStart + 4).map((src, i) => (
                   <button
                     key={i + thumbStart}
-                    onClick={() => setActiveThumb(i + thumbStart)}
-                    className={`flex-1 rounded-xl overflow-hidden border-2 transition-all ${
+                    onClick={() => updateActiveThumb(i + thumbStart)}
+                    className={`w-28 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
                       activeThumb === i + thumbStart
                         ? "border-blue-400 shadow-md"
                         : "border-transparent opacity-70 hover:opacity-100"
@@ -112,7 +322,7 @@ const thumbnails = info.thumbnails || info.images || [];
                     <img
                       src={src}
                       alt={`thumb-${i}`}
-                      className="w-full h-14 object-cover"
+                      className="w-full h-full object-cover"
                       onError={(e) => {
                         e.target.src = `https://placehold.co/100x60/f3e8ff/a855f7?text=${i + 1}`;
                       }}
@@ -123,7 +333,7 @@ const thumbnails = info.thumbnails || info.images || [];
 
               <button
                 onClick={handleNextThumb}
-                disabled={thumbStart >= mockThumbnails.length - 4}
+                disabled={activeThumb >= thumbnails.length - 1}
                 className="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 flex items-center justify-center transition-colors"
               >
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
@@ -142,20 +352,38 @@ const thumbnails = info.thumbnails || info.images || [];
           {/* Right: info section */}
           <div className="flex flex-col gap-4 w-56 flex-shrink-0">
             {/* Doctor info */}
-            <div className="flex items-center gap-3">
-              <img
-                src={info.doctorAvatar}
-                alt="doctor"
-                className="w-10 h-10 rounded-full object-cover border-2 border-blue-100"
-                onError={(e) => {
-                  e.target.src = "https://placehold.co/40x40/dbeafe/3b82f6?text=Dr";
-                }}
-              />
-              <div>
-                <p className="text-sm font-bold text-slate-800">{info.doctorName}</p>
-                <p className="text-xs text-slate-400">{info.doctorDate}</p>
-              </div>
-            </div>
+            <div className="flex items-center gap-3 rounded-lg -m-1 p-1">
+  {doctorAvatar ? (
+    <img
+      src={doctorAvatar}
+      alt="doctor"
+      className="w-10 h-10 rounded-full object-cover ring-blue-200"
+      onError={(e) => {
+        e.target.style.display = "none";
+      }}
+    />
+  ) : (
+    <div className="w-10 h-10 rounded-full bg-blue-100 ring-blue-200 flex items-center justify-center text-blue-600 text-xs font-bold">
+      {doctorName
+        ? doctorName
+            .trim()
+            .split(/\s+/)
+            .map((w) => w[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase()
+        : "Dr"}
+    </div>
+  )}
+  <div>
+    <p className="text-sm font-bold text-slate-800">
+      {doctorName}
+    </p>
+    {doctorDate && (
+      <p className="text-xs text-slate-400">{doctorDate}</p>
+    )}
+  </div>
+</div>
 
             {/* Meta info */}
             <div className="flex flex-col gap-1.5 text-sm text-slate-600">
@@ -163,56 +391,71 @@ const thumbnails = info.thumbnails || info.images || [];
                 ["Smear ID", smearId],
                 ["Chicken type", info.chickenType],
                 ["Province", info.province],
-                ["Age", info.age],
+                ["Age", age],
                 ["Stain type", info.stainType],
               ].map(([label, value]) => (
-                <div key={label} className="flex justify-between items-start gap-2">
-                  <span className="text-slate-400 text-xs whitespace-nowrap">{label} :</span>
-                  <span className="text-slate-700 text-xs text-right font-medium">{value}</span>
+                <div
+                  key={label}
+                  className="flex justify-between items-start gap-2"
+                >
+                  <span className="text-slate-700 text-xs font-semibold whitespace-nowrap">
+                    {label} :
+                  </span>
+                  <span className="text-slate-400 text-xs text-right font-medium">
+                    {value}
+                  </span>
                 </div>
               ))}
             </div>
 
             {/* Cell Distribution */}
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}
-            >
-              <div className="px-4 py-2.5">
-                <p className="text-white text-xs font-semibold tracking-wide mb-3">
-                  Cell Distribution
+            <div className="rounded-lg overflow-hidden border border-blue-100 shadow-sm">
+              <div className="px-4 py-2 bg-blue-500">
+                <p className="text-white text-sm font-bold">
+                  Prediction Results
                 </p>
-                <div className="flex flex-col gap-2.5">
-                  {info.distribution.map((cell) => (
-                    <div key={cell.label} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1.5">
+              </div>
+
+              <div className="p-4">
+                {distribution.length === 0 ? (
+                  <p className="text-slate-400 text-xs">No distribution data</p>
+                ) : (
+                  distribution.map((cell) => (
+                    <div key={cell.label} className="mb-2">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <div className="flex items-center gap-2">
                           <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: cell.color }}
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ background: cell.color }}
                           />
-                          <span className="text-white/90 text-xs">{cell.label}</span>
+                          <span className="text-xs text-gray-700">
+                            {cell.label}
+                          </span>
                         </div>
-                        <span className="text-white text-xs font-bold">{cell.percent}%</span>
+                        <span className="text-xs font-medium text-gray-800">
+                          {Number(cell.percent).toFixed(1)}%
+                        </span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                      <div className="w-full bg-gray-100 rounded-full h-1">
                         <div
-                          className="h-full rounded-full transition-all duration-700"
+                          className="h-1 rounded-full transition-all duration-700"
                           style={{
                             width: `${cell.percent}%`,
-                            backgroundColor: cell.color,
+                            background: cell.color,
                           }}
                         />
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
 
               {/* Total */}
-              <div className="flex justify-between items-center px-4 py-2 bg-blue-800/40 mt-1">
-                <span className="text-white/80 text-xs font-medium">Total</span>
-                <span className="text-white text-sm font-bold">{info.total}</span>
+              <div className="mx-4 mb-4 mt-2 flex items-center justify-between pt-2 border-t border-gray-200">
+                <span className="text-sm text-gray-500">Total cells</span>
+                <span className="text-sm font-medium text-gray-700">
+                  {total}
+                </span>
               </div>
             </div>
           </div>

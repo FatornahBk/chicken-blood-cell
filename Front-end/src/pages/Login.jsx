@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthCard from "../components/AuthCard";
 import InputField from "../components/InputField";
-import { loginUser } from "../services/Login"; 
+import { loginUser } from "../services/Login";
+import { jwtDecode } from "jwt-decode";
 
 const LoginIcon = () => (
   <svg
@@ -23,14 +24,13 @@ const LoginIcon = () => (
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");        
-  const [loading, setLoading] = useState(false); 
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) =>
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -42,12 +42,24 @@ export default function Login() {
       //เก็บ token
       localStorage.setItem("access_token", data.access_token);
 
+      const decodedToken = jwtDecode(data.access_token);
+
+      //เก็บ user สำหรับแสดงใน Navbar
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          name: decodedToken.first_name + " " + decodedToken.last_name,
+          role: decodedToken.role,
+          profileImage: decodedToken.profile_image ?? null,
+        }),
+      );
+
       navigate("/home");
     } catch (err) {
       if (err.response?.status === 401) {
-        setError("อีเมล รหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันตัวตน");
+        setError("Email, password incorrect or identity not yet verified.");
       } else {
-        setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+        setError("An error occurred. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -91,9 +103,7 @@ export default function Login() {
           />
 
           {/* แสดง error */}
-          {error && (
-            <p className="text-red-500 text-xs text-center">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
           <button
             type="submit"

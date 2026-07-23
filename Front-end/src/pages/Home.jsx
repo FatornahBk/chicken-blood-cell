@@ -1,141 +1,49 @@
-// HomePage.jsx
-// Main home page for CBC - Medical: Chicken Blood Cell Classification
-// Composed from reusable components: SearchBar, BloodCellCard
-// Navbar and Footer are assumed to already exist and wrap this component
-
-import React, { useState } from "react";
-import SearchBar from "../components/SearchBar_home";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import SearchBar from "../components/SearchBar";
 import BloodCellCard from "../components/BloodCellCard";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import logo from "../assets/Chicken-CBC.png";
 import BloodCellDetailModal from "../components/BloodCellDetailModal";
+import { uploadClient, getImageUrl } from "../services/api";
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────
-// Replace with real API calls (e.g. useEffect + fetch / React Query)
+const mapCardFromApi = (item) => {
+  const images = item.images ?? [];
 
-const MOCK_CARDS = [
-  {
-    id: 1,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 1,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "AV-9025",
-    chickenType: "Laying hen",
-    province: "Nakhon Si Thammarat",
-    age: "30 week",
-    stainType: "Wright stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-  {
-    id: 2,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 6,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "MK-0675",
-    chickenType: "Laying hen",
-    province: "Nakhon Si Thammarat",
-    age: "26 week",
-    stainType: "Wright stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-  {
-    id: 3,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 4,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "AV-8301",
-    chickenType: "Laying hen",
-    province: "Nakhon Si Thammarat",
-    age: "20 week",
-    stainType: "Wright stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-  {
-    id: 4,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 0,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "PT-1140",
-    chickenType: "Broiler",
-    province: "Surat Thani",
-    age: "6 week",
-    stainType: "Giemsa stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-  {
-    id: 5,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 2,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "CH-0022",
-    chickenType: "Native chicken",
-    province: "Chiang Mai",
-    age: "52 week",
-    stainType: "Wright stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-  {
-    id: 6,
-    images: [
-      "https://placehold.co/300x300/f8d7e3/c0527a?text=CBC",
-      "https://placehold.co/300x300/f3c4d3/b04470?text=CBC",
-      "https://placehold.co/300x300/f0b8cb/a03d67?text=CBC",
-      "https://placehold.co/300x300/eaaec2/903560?text=CBC",
-    ],
-    extraImages: 3,
-    title: "ตรวจคณิตเลือดของลูกเจ้กที่เริ่มเลี้ยงคืนมือ",
-    status: "Predicted",
-    issueId: "BK-5501",
-    chickenType: "Breeder",
-    province: "Bangkok",
-    age: "40 week",
-    stainType: "Wright stain",
-    uploaderName: "Dr.Strange",
-    uploaderRole: "veterinary",
-  },
-];
+  return {
+    id: item.batch_id,
+    smearId: item.smear_id,
+    images: images.map((img) => getImageUrl(img.image_path)),
+    imageDetails: images.map((img) => ({
+      url: getImageUrl(img.image_path),
+      totalCells: img.total_cells_in_image ?? null,
+      prediction: img.prediction ?? null,
+    })),
+    title: item.description ?? "",
+    status: item.status ?? "",
+    chickenType: item.chicken_type ?? "",
+    province: item.province ?? "",
+    age: item.age ?? "",
+    stainType: item.stain_type ?? "",
+    description: item.description ?? "",
+    predictedAt: item.predicted_at ?? "",
+    uploaderName: item.owner
+      ? `${item.owner.first_name ?? ""} ${item.owner.last_name ?? ""}`.trim()
+      : "",
+    uploaderAvatar: item.owner?.profile_image
+      ? getImageUrl(item.owner.profile_image)
+      : null,
+    uploaderId: item.owner?.id ?? item.owner?.user_id ?? null,
+  };
+};
 
 // ─── HeroSection ─────────────────────────────────────────────────────────────
 const HeroSection = ({ onSearch, onFilterChickenType, onSortChange }) => (
   <section className="flex flex-col items-center justify-center pt-4 pb-24 px-4 bg-gradient-to-b from-sky-100 to-white">
-  <div className="w-full flex justify-end mb-4">
+    <div className="w-full flex justify-end mb-4">
       <SearchBar
+        variant="home"
         onSearch={onSearch}
         onFilterChickenType={onFilterChickenType}
         onSortChange={onSortChange}
@@ -163,24 +71,26 @@ const HeroSection = ({ onSearch, onFilterChickenType, onSortChange }) => (
 );
 
 // ─── CardGrid ────────────────────────────────────────────────────────────────
-const CardGrid = ({ cards, onCardClick }) => {
+const CardGrid = ({ cards, loading, error, onCardClick }) => {
+  if (loading) {
+    return (
+      <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+        <p className="text-sm">กำลังโหลดข้อมูล...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="col-span-full flex flex-col items-center justify-center py-20 text-red-400">
+        <p className="text-sm">เกิดข้อผิดพลาด: {error}</p>
+      </div>
+    );
+  }
+
   if (cards.length === 0) {
     return (
       <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-12 w-12 mb-3 opacity-30"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1}
-            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
         <p className="text-sm">No records found</p>
       </div>
     );
@@ -188,70 +98,165 @@ const CardGrid = ({ cards, onCardClick }) => {
 
   return (
     //  Responsive grid: 1 col on mobile, 2 on tablet, 4 on desktop
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"> 
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {cards.map((card) => (
         <BloodCellCard
           key={card.id}
           images={card.images}
           title={card.title}
           status={card.status}
-          issueId={card.issueId}
+          issueId={card.smearId}
           chickenType={card.chickenType}
           province={card.province}
           age={card.age}
           stainType={card.stainType}
           uploaderName={card.uploaderName}
-          uploaderRole={card.uploaderRole}
-          onClick={() => onCardClick?.(card)}
+          uploaderDate={
+            card.predictedAt
+              ? new Date(card.predictedAt).toLocaleDateString("th-TH")
+              : ""
+          }
+          avatarUrl={card.uploaderAvatar}
+          onClick={(idx) => onCardClick?.(card, idx)}
         />
       ))}
     </div>
   );
 };
 
+const Pagination = ({ meta, onPageChange }) => {
+  if (!meta || meta.total_pages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 mt-8">
+      <button
+        onClick={() => onPageChange(meta.current_page - 1)}
+        disabled={meta.current_page <= 1}
+        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-100"
+      >
+        ก่อนหน้า
+      </button>
+      <span className="text-sm text-gray-600">
+        หน้า {meta.current_page} / {meta.total_pages}
+      </span>
+      <button
+        onClick={() => onPageChange(meta.current_page + 1)}
+        disabled={meta.current_page >= meta.total_pages}
+        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-100"
+      >
+        ถัดไป
+      </button>
+    </div>
+  );
+};
+
 // ─── HomePage ────────────────────────────────────────────────────────────────
 const HomePage = () => {
+  const navigate = useNavigate();
   const [selectedCard, setSelectedCard] = useState(null);
-  const [filteredCards, setFilteredCards] = useState(MOCK_CARDS);
+  const [selectedThumbIndex, setSelectedThumbIndex] = useState(0);
 
-  const handleSearch = (query) => {
-    if (!query.trim()) {
-      setFilteredCards(MOCK_CARDS);
-      return;
+  const [cards, setCards] = useState([]);
+  const [meta, setMeta] = useState({
+    total_items: 0,
+    current_page: 1,
+    per_page: 20,
+    total_pages: 0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({
+    search: "",
+    province: null,
+    chickenType: "All types",
+    startDate: "",
+    endDate: "",
+    page: 1,
+    limit: 20,
+  });
+  const debounceRef = useRef(null);
+
+  const fetchCards = useCallback(async (f) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = { page: f.page, limit: f.limit };
+      if (f.search) params.search = f.search;
+      if (f.province) params.province = f.province;
+      if (f.chickenType && f.chickenType !== "All types") {
+        params.chicken_type = f.chickenType;
+      }
+      if (f.startDate) params.startDate = f.startDate;
+      if (f.endDate) params.endDate = f.endDate;
+
+      const res = await uploadClient.get("/home/cards", { params });
+      const json = res.data;
+      const mapped = (json.data ?? []).map(mapCardFromApi);
+
+      setCards(mapped);
+      setMeta(
+        json.meta ?? {
+          total_items: mapped.length,
+          current_page: f.page,
+          per_page: f.limit,
+          total_pages: 1,
+        },
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message || err.message || "ไม่สามารถดึงข้อมูลได้",
+      );
+      setCards([]);
+    } finally {
+      setLoading(false);
     }
-    const q = query.toLowerCase();
-    setFilteredCards(
-      MOCK_CARDS.filter(
-        (c) =>
-          c.province.toLowerCase().includes(q) ||
-          c.uploaderName.toLowerCase().includes(q),
-      ),
-    );
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchCards(filters);
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [filters, fetchCards]);
+
+  const handleSearch = ({ query, province, chickenType }) => {
+    setFilters((prev) => ({
+      ...prev,
+      search: query,
+      province: province ?? null,
+      chickenType: chickenType ?? prev.chickenType,
+      page: 1,
+    }));
   };
 
   const handleFilterChickenType = (type) => {
-    if (type === "All types") {
-      setFilteredCards(MOCK_CARDS);
-    } else {
-      setFilteredCards(MOCK_CARDS.filter((c) => c.chickenType === type));
-    }
+    setFilters((prev) => ({ ...prev, chickenType: type, page: 1 }));
+  };
+
+  const handlePageChange = (page) => {
+    setFilters((prev) => ({ ...prev, page }));
   };
 
   const handleSortChange = (sort) => {
-    const sorted = [...filteredCards];
-    if (sort === "Sort by Status") {
-      const order = ["Severe", "Moderate", "Mild", "Normal", "Preview"];
-      sorted.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
-    } else if (sort === "Sort by Province") {
-      sorted.sort((a, b) => a.province.localeCompare(b.province));
-    }
-    // "Sort by Date" would sort by date field (add `createdAt` to mock data)
-    setFilteredCards(sorted);
+    setCards((prev) => {
+      const sorted = [...prev];
+      if (sort === "Sort by Status") {
+        const order = ["pending", "completed"];
+        sorted.sort(
+          (a, b) => order.indexOf(a.status) - order.indexOf(b.status),
+        );
+      } else if (sort === "Sort by Province") {
+        sorted.sort((a, b) => a.province.localeCompare(b.province));
+      }
+      return sorted;
+    });
   };
 
-  const handleCardClick = (card) => {
-  setSelectedCard(card);
-};
+  const handleCardClick = (card, idx = 0) => {
+    setSelectedCard(card);
+    setSelectedThumbIndex(idx);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -263,27 +268,30 @@ const HomePage = () => {
           onFilterChickenType={handleFilterChickenType}
           onSortChange={handleSortChange}
         />
-<<<<<<< HEAD
-
+        {/* ความกว้างสูงสุด 1400px, centered, padding รอบ */}
         <section className="w-full px-4 pb-16 max-w-[1400px] mx-auto">
-=======
-          {/* ความกว้างสูงสุด 1400px, centered, padding รอบ */}
-        <section className="w-full px-4 pb-16 max-w-[1400px] mx-auto">  
->>>>>>> 79e0ad3d1f54e69d53adf10ad259d9ada2ee3060
-          <CardGrid cards={filteredCards} onCardClick={handleCardClick} />
+          <CardGrid
+            cards={cards}
+            loading={loading}
+            error={error}
+            onCardClick={handleCardClick}
+          />
+          <Pagination meta={meta} onPageChange={handlePageChange} />
         </section>
       </main>
 
       <Footer />
 
-    {selectedCard && (
-      <BloodCellDetailModal
-        data={selectedCard}
-        onClose={() => setSelectedCard(null)}
-      />
-    )}
-  </div>
-);
+      {selectedCard && (
+        <BloodCellDetailModal
+          data={selectedCard}
+          initialThumbIndex={selectedThumbIndex}
+          onClose={() => setSelectedCard(null)}
+          onProfileClick={(doctorId) => navigate(`/profile/${doctorId}`)}
+        />
+      )}
+    </div>
+  );
 };
 
 export default HomePage;

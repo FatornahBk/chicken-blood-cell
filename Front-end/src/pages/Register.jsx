@@ -91,12 +91,12 @@ export default function Register() {
           </div>
           <div>
             <p className="text-sm font-semibold text-green-700">
-              สมัครสมาชิกสำเร็จ!
+              Registration Successful!
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              กรุณารอการยืนยันจาก
+              Please wait for account verification.
               <br />
-              ระบบจะส่งอีเมลแจ้งเตือนเมื่อได้รับการยืนยัน
+              You will receive an email notification once your account has been verified.
             </p>
           </div>
           <button

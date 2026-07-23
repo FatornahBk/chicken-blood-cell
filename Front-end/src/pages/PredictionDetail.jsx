@@ -1,18 +1,27 @@
 import { useState } from "react";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { fetchImageBlob, predictBatch } from "../services/Prediction";
+import { getImageUrl } from "../services/api";
 import { useNavigate, useLocation } from "react-router-dom";
 
 function PredictionDetail() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const smear = state?.smear;
+  // เก็บรายการรูปภาพที่ผู้ใช้เลือกสำหรับนำไปทำนายผล
   const [selectedImages, setSelectedImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   if (!smear) return <div>Not found</div>;
 
   const images = smear.images || [];
+
+  // map path -> image_id (ใช้จับคู่กับผลการทำนายที่ backend ส่งกลับมา)
+  const pathToIdMap = images.reduce((acc, img) => {
+    acc[img.image_path] = img.image_id;
+    return acc;
+  }, {});
 
   const toggleSelectAll = () => {
     if (selectedImages.length === images.length) {
@@ -21,7 +30,7 @@ function PredictionDetail() {
       setSelectedImages(images.map((img) => img.image_path));
     }
   };
-
+  // เลือกหรือยกเลิกการเลือกรูปภาพทีละรายการ
   const toggleImage = (path) => {
     setSelectedImages((prev) =>
       prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
@@ -34,35 +43,26 @@ function PredictionDetail() {
 
     try {
       const formData = new FormData();
-      formData.append("mode", smear.stain_type ?? "wright");
-
-      await Promise.all(
-        selectedImages.map(async (path) => {
-          const url = `http://localhost/ai/${path.replace(/\\/g, "/")}`;
-          const res = await fetch(url, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            },
-          });
-          const blob = await res.blob();
-          formData.append("images", blob, path.split(/[\\/]/).pop());
-        }),
+      formData.append("mode", smear.stain_type.toLowerCase());
+      const blobs = await Promise.all(
+        selectedImages.map((path) => fetchImageBlob(path)),
       );
 
-      const res = await fetch(
-        "http://localhost/api/predict-batch",
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
-      );
-      const predictionResult = await res.json();
+      selectedImages.forEach((path, i) => {
+        const storedFileName = path.split(/[\\/]/).pop();
+        formData.append("images", blobs[i], storedFileName);
+      });
+      const predictionResult = await predictBatch(formData);
+
+      // สร้าง mapping image_id -> path จริง เพื่อส่งไปให้หน้าแสดงผลจับคู่รูปกับผลทำนาย
+      const imagePathMap = selectedImages.reduce((acc, path) => {
+        const id = pathToIdMap[path];
+        if (id != null) acc[id] = path;
+        return acc;
+      }, {});
 
       navigate("/prediction/output", {
-        state: { smear, selectedImages, predictionResult },
+        state: { smear, selectedImages, imagePathMap, predictionResult },
       });
     } catch (err) {
       console.error(err);
@@ -77,27 +77,18 @@ function PredictionDetail() {
       <Navbar activePage="Prediction" />
 
       <div
-        className="min-h-screen flex flex-col"
+        className="flex flex-col"
         style={{
+          minHeight: "calc(100vh - 64px)",
           backgroundImage: "url('/src/assets/VerifyUsers.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          backgroundAttachment: "fixed",
+          backgroundAttachment: "scroll",
         }}
       >
-        <div className="max-w-5xl mx-auto px-2 py-10 flex-1 w-full">
-          {/* Header */}
-          <div className="text-center py-12">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              Prediction
-            </h1>
-            <p className="text-gray-500 text-sm font-medium">
-              Upload a blood smear image to analyze chicken blood cells
-            </p>
-          </div>
-
+        <div className="max-w-5xl mx-auto px-2 pt-12 pb-16 flex-1 w-full">
           {/* Main card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[600px]">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => navigate(-1)}
@@ -119,8 +110,55 @@ function PredictionDetail() {
 
             <div className="flex gap-6">
               {/* Left: Info panel */}
-              <div className="bg-gray-100 rounded-lg p-4 pt-8 min-w-[260px] w-[260px]">
-                <div className="flex justify-end items-center gap-2 mb-6">
+              <div className="bg-gray-100 rounded-lg p-4 pt-10 min-w-[260px] w-[260px] min-h-[496px] flex flex-col">
+                <p className="font-bold text-sm mb-3">{smear.smear_id}</p>
+                <hr className="border-gray-300 mb-3" />
+
+                <div className="flex flex-col gap-2 mb-4">
+                  {[
+                    { label: "Chicken type", value: smear.chicken_type },
+                    {
+                      label: "Age",
+                      value: smear.age ? `${smear.age} weeks` : null,
+                    },
+                    { label: "Province", value: smear.province },
+                    { label: "Stain type", value: smear.stain_type },
+                    {
+                      label: "Date",
+                      value: smear.created_at
+                        ? new Date(smear.created_at).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )
+                        : null,
+                    },
+                  ].map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="flex justify-between items-center text-sm"
+                    >
+                      <span className="text-gray-500">{label}</span>
+                      <span className="font-semibold text-gray-800 text-right">
+                        {value ?? "-"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <hr className="border-gray-300 mb-3" />
+
+                <div className="flex justify-between items-center text-sm mb-4">
+                  <span className="text-gray-500">Selected</span>
+                  <span className="font-semibold text-gray-800">
+                    {selectedImages.length} / {images.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4">
                   <input
                     type="checkbox"
                     checked={
@@ -134,22 +172,26 @@ function PredictionDetail() {
                     SELECT ALL
                   </span>
                 </div>
-                <p className="font-bold text-sm mb-1">{smear.smear_id}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Chicken type : {smear.chicken_type}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">Age : {smear.age}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Province : {smear.province}
-                </p>
+
+                <button
+                  onClick={handlePredict}
+                  disabled={isLoading || selectedImages.length === 0}
+                  className="w-full mt-auto bg-white hover:bg-gray-50 disabled:opacity-50
+                    text-gray-800 font-semibold py-2.5 rounded-xl text-sm
+                    border border-gray-200 transition-colors"
+                >
+                  {isLoading
+                    ? "กำลังทำนาย..."
+                    : `Predict (${selectedImages.length})`}
+                </button>
               </div>
 
               {/* Right: Images grid */}
 
               <div className="flex-1">
-                <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
+                <div className="grid grid-cols-3 overflow-y-auto pr-1 max-h-[500px]">
                   {images.map((img) => {
-                    const url = `http://localhost/api/${img.image_path.replace(/\\/g, "/")}`;
+                    const url = getImageUrl(img.image_path);
                     const isSelected = selectedImages.includes(img.image_path);
                     return (
                       <div
@@ -157,11 +199,11 @@ function PredictionDetail() {
                         className="flex flex-col items-center cursor-pointer"
                         onClick={() => toggleImage(img.image_path)}
                       >
-                        <div className="w-[186px] h-[146px] rounded-lg bg-gray-100 relative overflow-hidden">
+                        <div className="w-[200px] h-[157px] rounded-lg bg-gray-100 relative overflow-hidden">
                           <img
                             src={url}
                             alt={img.image_name}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover"
                           />
                           {isSelected && (
                             <div className="absolute top-1.5 right-1.5 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow">
@@ -190,22 +232,11 @@ function PredictionDetail() {
               </div>
             </div>
           </div>
-
-          {/* Predict button */}
-          <button
-            onClick={handlePredict}
-            disabled={isLoading || selectedImages.length === 0}
-            className="block mx-auto mt-6 bg-gray-600 hover:bg-gray-700
-             disabled:opacity-50 text-white font-semibold
-             py-3 px-16 rounded-xl text-base transition-colors"
-          >
-            {isLoading
-              ? "กำลังทำนาย..."
-              : `Predict All (${selectedImages.length})`}
-          </button>
         </div>
 
-        <Footer />
+        <div className="mt-auto">
+          <Footer />
+        </div>
       </div>
     </>
   );

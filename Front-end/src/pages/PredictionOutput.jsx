@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { getImageUrl } from "../services/api";
+import { savePrediction } from "../services/Prediction";
 
 const CELL_COLOR_MAP = {
   Basophil: "#9b5de5",
@@ -10,6 +13,18 @@ const CELL_COLOR_MAP = {
   Lymphocyte: "#06b6a2",
   Monocyte: "#ca8a04",
   Thrombocyte: "#fb5607",
+};
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 5;
+
+const clampOffset = (newOffset, newScale, containerW, containerH) => {
+  const maxX = (containerW * (newScale - 1)) / 2;
+  const maxY = (containerH * (newScale - 1)) / 2;
+  return {
+    x: Math.min(maxX, Math.max(-maxX, newOffset.x)),
+    y: Math.min(maxY, Math.max(-maxY, newOffset.y)),
+  };
 };
 
 function ImagePlaceholder({ size = "sm" }) {
@@ -89,25 +104,17 @@ function CellBar({ label, percent, colorClass }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function PredictionLogsPage() {
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const { smear, selectedImages, predictionResult } = state || {};
-  const imageList = predictionResult?.data ?? [];
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const selectedData = imageList[selectedIndex];
-  const cellCounts = selectedData?.classes ?? {};
-  const grandTotal = Object.values(cellCounts).reduce(
-    (sum, v) => sum + v.count,
-    0,
-  );
-
+const FullscreenCanvas = ({ imageUrl, classes, onClose }) => {
+  const [scale, setScale] = useState(1);
+  const [fitSize, setFitSize] = useState({ width: 0, height: 0 });
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const containerRef = useRef(null);
 
-  const drawBoundingBoxes = (classes) => {
+  const draw = () => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
     const container = containerRef.current;
@@ -159,9 +166,313 @@ export default function PredictionLogsPage() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(draw, 50);
+    return () => clearTimeout(timer);
+  }, [fitSize]);
+
+  return (
+    <div
+      className="relative rounded-md shadow-2xl overflow-hidden"
+      style={{
+        width: fitSize.width || "90vw",
+        height: fitSize.height || "90vh",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        ref={containerRef}
+        className="relative w-full h-full"
+        onWheel={(e) => {
+          e.preventDefault();
+          const newScale = Math.min(
+            Math.max(scale - e.deltaY * 0.001, MIN_SCALE),
+            MAX_SCALE,
+          );
+          const container = containerRef.current;
+          if (!container) return;
+          const clamped = clampOffset(
+            offset,
+            newScale,
+            container.offsetWidth,
+            container.offsetHeight,
+          );
+          setScale(newScale);
+          setOffset(clamped);
+        }}
+        onMouseDown={(e) => {
+          setDragging(true);
+          setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+        }}
+        onMouseMove={(e) => {
+          if (!dragging) return;
+          const container = containerRef.current;
+          if (!container) return;
+          const newOffset = {
+            x: e.clientX - dragStart.x,
+            y: e.clientY - dragStart.y,
+          };
+          const clamped = clampOffset(
+            newOffset,
+            scale,
+            container.offsetWidth,
+            container.offsetHeight,
+          );
+          setOffset(clamped);
+        }}
+        onMouseUp={() => setDragging(false)}
+        onMouseLeave={() => setDragging(false)}
+      >
+        <img
+          ref={imageRef}
+          src={imageUrl}
+          alt="hidden"
+          style={{ display: "none" }}
+          onLoad={(e) => {
+            const img = e.target;
+            const maxW = window.innerWidth * 0.9;
+            const maxH = window.innerHeight * 0.9;
+            const aspect = img.naturalWidth / img.naturalHeight;
+            let w = maxW;
+            let h = maxW / aspect;
+            if (h > maxH) {
+              h = maxH;
+              w = maxH * aspect;
+            }
+            setFitSize({ width: w, height: h });
+          }}
+        />
+        <div className="w-full h-full flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            style={{
+              display: "block",
+              maxWidth: "100%",
+              maxHeight: "100%",
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              transformOrigin: "center center",
+              cursor: dragging ? "grabbing" : "grab",
+            }}
+          />
+        </div>
+        <div className="absolute bottom-2 right-2 flex gap-1">
+          <button
+            onClick={() => {
+              const newScale = Math.min(scale + 0.2, MAX_SCALE);
+              const container = containerRef.current;
+              if (!container) return;
+              const clamped = clampOffset(
+                offset,
+                newScale,
+                container.offsetWidth,
+                container.offsetHeight,
+              );
+              setScale(newScale);
+              setOffset(clamped);
+            }}
+            className="bg-white/80 rounded px-2 py-1 text-xs font-bold shadow cursor-pointer flex items-center"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              const newScale = Math.max(scale - 0.2, MIN_SCALE);
+              const container = containerRef.current;
+              if (!container) return;
+              const clamped = clampOffset(
+                offset,
+                newScale,
+                container.offsetWidth,
+                container.offsetHeight,
+              );
+              setScale(newScale);
+              setOffset(clamped);
+            }}
+            className="bg-white/80 rounded px-2 py-1 text-xs font-bold shadow cursor-pointer flex items-center"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              setScale(1);
+              setOffset({ x: 0, y: 0 });
+            }}
+            className="bg-white/80 rounded px-2 py-1 text-xs font-bold shadow cursor-pointer"
+          >
+            ↺
+          </button>
+        </div>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 bg-white/80 rounded-full p-2 shadow cursor-pointer z-10"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default function PredictionLogsPage() {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const { smear, selectedImages, imagePathMap, predictionResult } = state || {};
+
+  const imageList = predictionResult?.data ?? [];
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const selectedData = imageList[selectedIndex];
+  const cellCounts = selectedData?.classes ?? {};
+  const grandTotal = Object.values(cellCounts).reduce(
+    (sum, v) => sum + v.count,
+    0,
+  );
+  const getImagePathByImageId = (imageId) => {
+    if (imageId == null || !imagePathMap) return null;
+    return imagePathMap[imageId] ?? null;
+  };
+
+  const selectedImagePath = getImagePathByImageId(selectedData?.image_id);
+
+  const canvasRef = useRef(null);
+  const imageRef = useRef(null);
+  const containerRef = useRef(null);
+  const thumbRefs = useRef([]);
+  const [imgAspectRatio, setImgAspectRatio] = useState(null);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleImageLoad = () => {
+    const img = imageRef.current;
+    if (img && img.naturalWidth && img.naturalHeight) {
+      setImgAspectRatio(img.naturalWidth / img.naturalHeight);
+    }
+    drawBoundingBoxes(selectedData?.classes ?? {});
+  };
+
+  const drawBoundingBoxes = (classes) => {
+    const canvas = canvasRef.current;
+    const img = imageRef.current;
+    const container = containerRef.current;
+    if (!canvas || !img || !container || !img.naturalWidth) return;
+
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(img, 0, 0);
+
+    const displayScale = img.naturalWidth / canvas.offsetWidth;
+
+    Object.entries(classes).forEach(([className, classData]) => {
+      const color = CELL_COLOR_MAP[className] || "#999999";
+      classData.detections.forEach(({ confidence, bbox }) => {
+        const { x1, y1, width, height } = bbox;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * displayScale;
+        ctx.strokeRect(x1, y1, width, height);
+
+        const label = `${className} ${(confidence * 100).toFixed(1)}%`;
+        ctx.font = `bold ${Math.round(11 * displayScale)}px sans-serif`;
+        const textW = ctx.measureText(label).width;
+
+        let labelX = x1;
+        const labelH = 16 * displayScale;
+        let labelY = y1 - labelH;
+        if (labelY < 0) labelY = y1 + height + 2;
+        if (labelX + textW + 6 * displayScale > canvas.width)
+          labelX = canvas.width - textW - 6 * displayScale;
+        if (labelX < 0) labelX = 0;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(labelX, labelY, textW + 6 * displayScale, labelH);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(
+          label,
+          labelX + 3 * displayScale,
+          labelY + 13 * displayScale,
+        );
+      });
+    });
+  };
+
+  useEffect(() => {
     if (!selectedData) return;
     setTimeout(() => drawBoundingBoxes(selectedData.classes), 100);
   }, [selectedIndex, selectedData]);
+  useEffect(() => {
+    setImgAspectRatio(null);
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    const el = thumbRefs.current[selectedIndex];
+    if (el) {
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft") {
+        setSelectedIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        setSelectedIndex((i) =>
+          Math.min((selectedImages?.length ?? 1) - 1, i + 1),
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedImages]);
 
   const colorPalette = [
     { bar: "bg-gray-700", dot: "bg-gray-700" },
@@ -171,53 +482,63 @@ export default function PredictionLogsPage() {
     { bar: "bg-green-400", dot: "bg-green-400" },
     { bar: "bg-red-400", dot: "bg-red-400" },
   ];
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [description, setDescription] = useState(
-    "ตรวจหาเม็ดเลือดขาวของที่ฟักเลี้ยงเองกับมือ",
-  );
+  const [description, setDescription] = useState("");
+  const [toast, setToast] = useState(null); // { message, type: "success" | "error" }
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleSave = async () => {
+    try {
+      const payload = {
+        description,
+        message: predictionResult?.message ?? "",
+        mode: predictionResult?.mode ?? "",
+        total_images_processed: predictionResult?.total_images_processed ?? 0,
+        data: predictionResult?.data ?? [],
+      };
+      await savePrediction(payload);
+      setToast({ message: "Saved successfully!", type: "success" });
+      setTimeout(() => navigate("/prediction"), 1000); // รอ toast โชว์แป๊บนึงก่อนเปลี่ยนหน้า
+    } catch (err) {
+      setToast({ message: "Failed to save: " + err.message, type: "error" });
+    }
+  };
 
   return (
     <>
       <Navbar />
-      <div className="bg-gradient-to-br from-slate-100 to-blue-50 p-4">
-        {/* ── Top bar ── */}
-        <div className="flex items-center gap-3 mb-5">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm text-sm font-medium"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back
-          </button>
-          <h1 className="text-lg font-bold text-gray-700 tracking-wide">
-            Prediction Logs
-          </h1>
-          <div className="w-8 h-8 rounded-lg bg-blue-200 border-2 border-blue-400" />
-        </div>
-
-        {/* ── Three-column layout ── */}
-        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-180px)]">
+      <div className="bg-gradient-to-br from-slate-100 to-blue-50 p-4 min-h-[calc(100vh-88px)] flex flex-col justify-center items-center">
+        <div className="flex gap-4 h-[calc(100vh-190px)] w-full max-w-[1220px] justify-center">
           {/* ── Column 1: Image list ── */}
-          <div className="col-span-4 bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-blue-100 flex flex-col overflow-hidden">
+          <div className="w-[340px] shrink-0 bg-white/80  backdrop-blur rounded-xl shadow-sm border border-blue-100 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-blue-50">
-              <h2 className="font-bold text-gray-700">Image</h2>
-              <button className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors font-medium">
-                Edit
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-500 transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <h2 className="font-bold text-gray-700">Image</h2>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
               {imageList.map((item, i) => (
                 <button
                   key={i}
@@ -228,70 +549,52 @@ export default function PredictionLogsPage() {
                       : "border-transparent bg-white hover:bg-blue-50/50"
                   }`}
                 >
-                  <ImagePlaceholder size="sm" />
+                  <div className="rounded-md overflow-hidden shrink-0 bg-blue-100 w-28 h-24">
+                    {getImagePathByImageId(item.image_id) ? (
+                      <img
+                        src={getImageUrl(getImagePathByImageId(item.image_id))}
+                        className="block w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ImagePlaceholder size="sm" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-blue-700 truncate">
-                      {item.filename}
+                      {item.image_name}
                     </p>
                     <p className="text-xs text-gray-500">
                       Detections: {item.total_detections}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 break-words">
                       Classes: {item.classes_found.join(", ")}
                     </p>
                   </div>
                 </button>
               ))}
             </div>
-            {/* Scroll indicator */}
-            <div className="flex justify-center py-2">
-              <svg
-                className="w-4 h-4 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
           </div>
 
           {/* ── Column 2: Example / Preview ── */}
-          <div className="col-span-5 bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-blue-100 flex flex-col overflow-hidden">
+          <div className="w-[600px] shrink-0 bg-white/80  backdrop-blur rounded-xl shadow-sm border border-blue-100 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-blue-50">
               <h2 className="font-bold text-gray-700">
                 Example
                 {selectedData && (
                   <span className="ml-2 text-blue-500 font-normal text-sm">
-                    — {selectedData.filename}
+                    {selectedData.image_name}
                   </span>
                 )}
               </h2>
-              <button className="text-gray-400 hover:text-blue-500 transition-colors">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.232 5.232l3.536 3.536M9 11l6.071-6.071a2 2 0 012.828 2.828L11.828 13.83A4 4 0 019 15H8v-1a4 4 0 011-2.586z"
-                  />
-                </svg>
-              </button>
             </div>
 
             {/* Main preview */}
             <div className="flex items-center justify-center gap-3 px-4 py-4 flex-1">
-              <button className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-500 transition-colors shrink-0">
+              <button
+                onClick={() => setSelectedIndex((i) => Math.max(0, i - 1))}
+                disabled={selectedIndex === 0}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-500 transition-colors shrink-0 disabled:opacity-40 disabled:hover:bg-gray-100 disabled:cursor-not-allowed"
+              >
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -309,27 +612,177 @@ export default function PredictionLogsPage() {
 
               <div
                 ref={containerRef}
-                className="w-[430px] h-80 bg-gray-200 rounded-2xl overflow-hidden relative flex items-center justify-center"
+                className="bg-gray-200 rounded-lg overflow-hidden relative flex items-center justify-center"
+                style={{
+                  width: imgAspectRatio
+                    ? imgAspectRatio >= 420 / 340
+                      ? "420px"
+                      : `${340 * imgAspectRatio}px`
+                    : "420px",
+                  height: imgAspectRatio
+                    ? imgAspectRatio >= 420 / 340
+                      ? `${420 / imgAspectRatio}px`
+                      : "340px"
+                    : "340px",
+                  transition: "width 0.2s ease, height 0.2s ease",
+                }}
+                onWheel={(e) => {
+                  e.preventDefault();
+                  const newScale = Math.min(
+                    Math.max(scale - e.deltaY * 0.001, MIN_SCALE),
+                    MAX_SCALE,
+                  );
+                  const container = containerRef.current;
+                  if (!container) return;
+                  const clamped = clampOffset(
+                    offset,
+                    newScale,
+                    container.offsetWidth,
+                    container.offsetHeight,
+                  );
+                  setScale(newScale);
+                  setOffset(clamped);
+                }}
+                onMouseDown={(e) => {
+                  setDragging(true);
+                  setDragStart({
+                    x: e.clientX - offset.x,
+                    y: e.clientY - offset.y,
+                  });
+                }}
+                onMouseMove={(e) => {
+                  if (!dragging) return;
+                  const container = containerRef.current;
+                  if (!container) return;
+                  const newOffset = {
+                    x: e.clientX - dragStart.x,
+                    y: e.clientY - dragStart.y,
+                  };
+                  const clamped = clampOffset(
+                    newOffset,
+                    scale,
+                    container.offsetWidth,
+                    container.offsetHeight,
+                  );
+                  setOffset(clamped);
+                }}
+                onMouseUp={() => setDragging(false)}
+                onMouseLeave={() => setDragging(false)}
               >
-                {selectedImages?.[selectedIndex] ? (
+                {selectedImagePath ? (
                   <>
                     <img
                       ref={imageRef}
-                      src={`https://television-cooperative-belief-like.trycloudflare.com/api/${selectedImages[selectedIndex].replace(/\\/g, "/")}`}
+                      src={getImageUrl(selectedImagePath)}
                       crossOrigin="anonymous"
                       style={{ display: "none" }}
-                      onLoad={() =>
-                        drawBoundingBoxes(selectedData?.classes ?? {})
-                      }
+                      onLoad={handleImageLoad}
                     />
                     <canvas
                       ref={canvasRef}
                       style={{
                         display: "block",
-                        maxWidth: "100%",
-                        maxHeight: "100%",
+                        width: "100%",
+                        height: "auto",
+                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+                        transformOrigin: "center center",
+                        cursor: dragging ? "grabbing" : "grab",
                       }}
                     />
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                      <button
+                        onClick={() => {
+                          const newScale = Math.min(scale + 0.2, MAX_SCALE);
+                          const container = containerRef.current;
+                          if (!container) return;
+                          const clamped = clampOffset(
+                            offset,
+                            newScale,
+                            container.offsetWidth,
+                            container.offsetHeight,
+                          );
+                          setScale(newScale);
+                          setOffset(clamped);
+                        }}
+                        className="bg-white/80 rounded px-1.5 py-1 text-xs font-bold shadow cursor-pointer flex items-center"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="11" y1="8" x2="11" y2="14" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newScale = Math.max(scale - 0.2, MIN_SCALE);
+                          const container = containerRef.current;
+                          if (!container) return;
+                          const clamped = clampOffset(
+                            offset,
+                            newScale,
+                            container.offsetWidth,
+                            container.offsetHeight,
+                          );
+                          setScale(newScale);
+                          setOffset(clamped);
+                        }}
+                        className="bg-white/80 rounded px-1.5 py-1 text-xs font-bold shadow cursor-pointer flex items-center"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setScale(1);
+                          setOffset({ x: 0, y: 0 });
+                        }}
+                        className="bg-white/80 rounded px-1.5 py-1 text-[10px] font-bold shadow cursor-pointer"
+                      >
+                        ↺
+                      </button>
+                      <button
+                        onClick={() => setIsFullscreen(true)}
+                        className="bg-white/80 rounded px-1.5 py-1 text-xs font-bold shadow cursor-pointer flex items-center"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="15 3 21 3 21 9" />
+                          <polyline points="9 21 3 21 3 15" />
+                          <line x1="21" y1="3" x2="14" y2="10" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <svg
@@ -356,7 +809,13 @@ export default function PredictionLogsPage() {
                   </svg>
                 )}
               </div>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-500 transition-colors shrink-0">
+              <button
+                onClick={() =>
+                  setSelectedIndex((i) => Math.min(imageList.length - 1, i + 1))
+                }
+                disabled={selectedIndex === imageList.length - 1}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-500 transition-colors shrink-0 disabled:opacity-40 disabled:hover:bg-gray-100 disabled:cursor-not-allowed"
+              >
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -374,108 +833,105 @@ export default function PredictionLogsPage() {
             </div>
 
             {/* Thumbnail strip */}
-            <div className="pb-4 flex justify-center gap-4 overflow-x-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
-              {selectedImages?.map((path, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedIndex(i)}
-                  className={`w-24 h-20 shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${
-                    selectedIndex === i
-                      ? "border-blue-400"
-                      : "border-transparent"
-                  }`}
-                >
-                  <img
-                    src={`https://television-cooperative-belief-like.trycloudflare.com/api/${path.replace(/\\/g, "/")}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+            <div className="pb-4 flex justify-center">
+              <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent max-w-[480px] pb-3">
+                {imageList.map((item, i) => {
+                  const imgPath = getImagePathByImageId(item.image_id);
+                  if (!imgPath) return null;
+                  return (
+                    <button
+                      key={i}
+                      ref={(el) => (thumbRefs.current[i] = el)}
+                      onClick={() => setSelectedIndex(i)}
+                      className={`w-28 h-24 shrink-0 rounded-md overflow-hidden border-2 transition-colors ${
+                        selectedIndex === i
+                          ? "border-gray-300"
+                          : "border-transparent"
+                      }`}
+                    >
+                      <img
+                        src={getImageUrl(imgPath)}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           {/* ── Column 3: Detail panel ── */}
-          <div className="col-span-3 flex flex-col gap-3 overflow-y-auto">
+          <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto">
             {/* Description card */}
-            <div className="bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-500 rounded-t-2xl">
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+              <div className="flex items-center px-4 py-2 bg-blue-500 rounded-t-lg">
                 <h3 className="font-bold text-white text-sm">Description</h3>
-                <button
-                  onClick={() => setEditingDesc(!editingDesc)}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.232 5.232l3.536 3.536M9 11l6.071-6.071a2 2 0 012.828 2.828L11.828 13.83A4 4 0 019 15H8v-1a4 4 0 011-2.586z"
-                    />
-                  </svg>
-                </button>
               </div>
               <div className="p-3">
-                {editingDesc ? (
-                  <div>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full text-sm text-gray-700 bg-blue-50 rounded-lg p-2 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-                      rows={3}
-                    />
-                    <button
-                      onClick={() => setEditingDesc(false)}
-                      className="mt-2 w-full text-xs py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-2 leading-relaxed min-h-[60px]">
-                    {description}
-                  </p>
-                )}
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter description..."
+                  className="w-full text-sm text-gray-700 bg-blue-50 rounded-lg p-2 border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                  rows={4}
+                />
               </div>
             </div>
 
             {/* Cell Distribution card */}
-            <div className="bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-blue-100 overflow-hidden flex-1">
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-500 rounded-t-2xl">
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex-1">
+              <div className="flex items-center justify-between px-4 py-2 bg-blue-500 rounded-t-lg">
                 <h3 className="font-bold text-white text-sm">
-                  Cell Distribution
+                  Prediction Results
                 </h3>
               </div>
               <div className="p-4">
-                {Object.entries(cellCounts).map(([cls, val], i) => (
-                  <CellBar
-                    key={cls}
-                    label={cls}
-                    percent={
-                      grandTotal > 0
-                        ? Math.round((val.count / grandTotal) * 100)
-                        : 0
-                    }
-                    colorClass={colorPalette[i % colorPalette.length]}
-                  />
-                ))}
+                {Object.keys(CELL_COLOR_MAP).map((cls) => {
+                  const val = cellCounts[cls];
+                  const pct =
+                    val && grandTotal > 0
+                      ? ((val.count / grandTotal) * 100).toFixed(1)
+                      : "0.0";
+                  const color = CELL_COLOR_MAP[cls];
+                  return (
+                    <div key={cls} className="mb-2">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ background: color }}
+                          />
+                          <span className="text-xs text-gray-700">{cls}</span>
+                        </div>
+                        <span className="text-xs font-medium text-gray-800">
+                          {pct}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1">
+                        <div
+                          className="h-1 rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%`, background: color }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Total */}
-              <div className="mx-4 mb-4 flex items-center justify-between bg-blue-500 rounded-xl px-4 py-2">
-                <span className="text-white font-semibold text-sm">Total</span>
-                <span className="text-white font-bold text-lg">
+              <div className="mx-4 mb-4 mt-2 flex items-center justify-between pt-2 border-t border-gray-200">
+                <span className="text-sm text-gray-500">Total cells</span>
+                <span className="text-sm font-medium text-gray-700">
                   {grandTotal}
                 </span>
               </div>
 
               {/* Save button */}
-              <div className="px-4 pb-4">
-                <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-green-400 hover:bg-green-500 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 text-sm">
+              <div className="px-4 pb-3">
+                <button
+                  onClick={handleSave}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-green-400 hover:bg-green-500 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 text-sm"
+                >
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -489,7 +945,7 @@ export default function PredictionLogsPage() {
                       d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                     />
                   </svg>
-                  บันทึกข้อมูลลงฐานข้อมูล
+                  Save data to database.
                 </button>
               </div>
             </div>
@@ -497,6 +953,37 @@ export default function PredictionLogsPage() {
         </div>
       </div>
       <Footer />
+
+      {isFullscreen &&
+        selectedData &&
+        selectedImagePath &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center"
+            onClick={() => setIsFullscreen(false)}
+          >
+            <FullscreenCanvas
+              imageUrl={getImageUrl(selectedImagePath)}
+              classes={selectedData.classes}
+              onClose={() => setIsFullscreen(false)}
+            />
+          </div>,
+          document.body,
+        )}
+
+      {toast &&
+        createPortal(
+          <div
+            className={`fixed top-4 right-4 z-[10000] px-4 py-3 rounded-lg shadow-lg border border-white text-sm font-medium bg-white transition-all animate-[fadeIn_0.2s_ease] ${
+              toast.type === "error"
+                ? "border-red-300 text-red-600"
+                : "border-green-300 text-green-600"
+            }`}
+          >
+            {toast.message}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

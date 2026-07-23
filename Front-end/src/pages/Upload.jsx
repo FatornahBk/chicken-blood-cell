@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import Select from "react-select";
 import toast, { Toaster } from "react-hot-toast";
 import Navbar from "../components/navbar";
 import { useNavigate } from "react-router-dom";
@@ -26,14 +27,16 @@ function ImageThumbnail({ image, onRemove, onSelect, selected }) {
   return (
     <div
       onClick={() => onSelect(image.id)}
-      className={`relative rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-150 group
-        ${selected ? "border-blue-500" : "border-transparent"}`}
+      className="relative cursor-pointer transition-all duration-150 group flex flex-col"
     >
-      <div className="w-full aspect-square min-h-[80px]">
+      <div
+        className={`w-full aspect-square min-h-[80px] rounded-md overflow-hidden border-2
+      ${selected ? "border-gray-400" : "border-transparent"}`}
+      >
         <img
           src={image.preview}
           alt={image.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover block"
         />
       </div>
       <button
@@ -53,6 +56,108 @@ function ImageThumbnail({ image, onRemove, onSelect, selected }) {
 }
 
 // ── ส่วน Upload Page ────────────────────────────
+const thaiProvinces = [
+  "Bangkok",
+  "Amnat Charoen",
+  "Ang Thong",
+  "Bueng Kan",
+  "Buriram",
+  "Chachoengsao",
+  "Chai Nat",
+  "Chaiyaphum",
+  "Chanthaburi",
+  "Chiang Mai",
+  "Chiang Rai",
+  "Chonburi",
+  "Chumphon",
+  "Kalasin",
+  "Kamphaeng Phet",
+  "Kanchanaburi",
+  "Khon Kaen",
+  "Krabi",
+  "Lampang",
+  "Lamphun",
+  "Loei",
+  "Lopburi",
+  "Mae Hong Son",
+  "Maha Sarakham",
+  "Mukdahan",
+  "Nakhon Nayok",
+  "Nakhon Pathom",
+  "Nakhon Phanom",
+  "Nakhon Ratchasima",
+  "Nakhon Sawan",
+  "Nakhon Si Thammarat",
+  "Nan",
+  "Narathiwat",
+  "Nong Bua Lamphu",
+  "Nong Khai",
+  "Nonthaburi",
+  "Pathum Thani",
+  "Pattani",
+  "Phang Nga",
+  "Phatthalung",
+  "Phayao",
+  "Phetchabun",
+  "Phetchaburi",
+  "Phichit",
+  "Phitsanulok",
+  "Phrae",
+  "Phra Nakhon Si Ayutthaya",
+  "Phuket",
+  "Prachinburi",
+  "Prachuap Khiri Khan",
+  "Ranong",
+  "Ratchaburi",
+  "Rayong",
+  "Roi Et",
+  "Sa Kaeo",
+  "Sakon Nakhon",
+  "Samut Prakan",
+  "Samut Sakhon",
+  "Samut Songkhram",
+  "Saraburi",
+  "Satun",
+  "Sing Buri",
+  "Si Sa Ket",
+  "Songkhla",
+  "Sukhothai",
+  "Suphan Buri",
+  "Surat Thani",
+  "Surin",
+  "Tak",
+  "Trang",
+  "Trat",
+  "Ubon Ratchathani",
+  "Udon Thani",
+  "Uthai Thani",
+  "Uttaradit",
+  "Yala",
+  "Yasothon",
+];
+
+const chickenTypes = ["Laying hen", "Native chicken"];
+
+const selectMenuPortalStyle = {
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
+const selectClassNames = (hasError) => ({
+  control: (state) =>
+    `!min-h-[38px] !rounded-lg !border !text-xs !cursor-pointer !shadow-none !px-1
+    ${hasError ? "!border-red-400 !bg-red-50" : state.isFocused ? "!border-blue-400 !bg-white" : "!border-gray-300 !bg-white"}`,
+  valueContainer: () => "!px-2",
+  indicatorSeparator: () => "!hidden",
+  dropdownIndicator: () => "!text-gray-400 !px-2",
+  menu: () =>
+    "!mt-2 !rounded-lg !overflow-hidden !border !border-gray-200 !shadow-lg !z-50 !w-full !min-w-full !bg-white",
+  menuList: () => "!max-h-[252px] !py-1 !bg-white",
+  option: (state) =>
+    `!text-sm !cursor-pointer !px-3 !py-2 !rounded-none
+    ${state.isSelected ? "!bg-gray-100 !font-semibold !text-gray-800" : state.isFocused ? "!bg-blue-50 !text-gray-600" : "!bg-white !text-gray-600"}`,
+  placeholder: () => "!text-gray-400 !px-1",
+  singleValue: () => "!text-gray-700 !px-1",
+  input: () => "!text-gray-700 !px-1",
+});
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -90,6 +195,8 @@ const Upload = () => {
       });
     setImages((p) => p.filter((img) => !img.selected));
   };
+
+  // เก็บข้อมูลไฟล์ที่ผู้ใช้อัปโหลดพร้อมสร้าง URL สำหรับ Preview ภาพ
   const addFiles = (files) => {
     const oversized = Array.from(files).filter((f) => f.size > 1024 * 1024);
     if (oversized.length > 0) {
@@ -102,7 +209,7 @@ const Upload = () => {
         id: Date.now() + idx,
         name: f.name,
         file: f,
-        preview: URL.createObjectURL(f),
+        preview: URL.createObjectURL(f), // สร้าง URL สำหรับแสดงภาพตัวอย่าง
         selected: false,
       }));
     setImages((p) => [...p, ...newImgs]);
@@ -125,6 +232,8 @@ const Upload = () => {
 
     try {
       setLoading(true);
+
+      // ส่งข้อมูล Metadata และชุดรูปภาพไปยัง API เพื่อบันทึกลงระบบ
       const result = await uploadBatch({
         smear_id: fields.smearId.trim(),
         chicken_type: fields.chickenType.trim(),
@@ -134,17 +243,17 @@ const Upload = () => {
         files: images.map((img) => img.file),
       });
       toast.success(
-  `${result.message}\nBatch ID: ${result.batch_id} | จำนวนรูปภาพ: ${result.total_images} ไฟล์`,
-  {
-    duration: 5000,
-    style: {
-      borderRadius: "12px",
-      fontSize: "13px",
-      padding: "12px 16px",
-      whiteSpace: "pre-line",
-    },
-  }
-);
+        `${result.message}\nNumber of images: ${result.total_images} File`,
+        {
+          duration: 5000,
+          style: {
+            borderRadius: "12px",
+            fontSize: "13px",
+            padding: "12px 16px",
+            whiteSpace: "pre-line",
+          },
+        },
+      );
       setFields({
         smearId: "",
         chickenType: "",
@@ -155,7 +264,7 @@ const Upload = () => {
       setImages([]);
     } catch (err) {
       toast.error(
-        err?.response?.data?.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+        err?.response?.data?.message || "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -213,7 +322,7 @@ const Upload = () => {
                       Smear ID <span className="text-red-500">*</span>
                     </p>
                     <input
-                      className={`bg-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 w-full outline-none focus:bg-white border ${errors.smearId ? "border-red-400 bg-red-50" : "border-transparent focus:border-blue-400"}`}
+                      className={`bg-white rounded-lg px-3 py-2 text-sm text-gray-700 w-full outline-none border ${errors.smearId ? "border-red-400 bg-red-50" : "border-gray-300 focus:border-blue-400"}`}
                       value={fields.smearId}
                       onChange={(e) => {
                         setFields((p) => ({ ...p, smearId: e.target.value }));
@@ -225,48 +334,67 @@ const Upload = () => {
                     <p className="text-xs text-gray-400 mb-1">
                       Chicken type <span className="text-red-500">*</span>
                     </p>
-                    <select
-                      className={`bg-gray-200 rounded-lg px-3 py-2 text-sm w-full outline-none focus:bg-white border cursor-pointer
-    ${fields.chickenType === "" ? "text-gray-400" : "text-gray-700"}
-    ${errors.chickenType ? "border-red-400 bg-red-50" : "border-transparent focus:border-blue-400"}`}
-                      value={fields.chickenType}
-                      onChange={(e) => {
-                        setFields((p) => ({
-                          ...p,
-                          chickenType: e.target.value,
-                        }));
+                    <Select
+                      unstyled
+                      options={chickenTypes.map((type) => ({
+                        value: type,
+                        label: type,
+                      }))}
+                      value={
+                        fields.chickenType
+                          ? {
+                              value: fields.chickenType,
+                              label: fields.chickenType,
+                            }
+                          : null
+                      }
+                      onChange={(opt) => {
+                        setFields((p) => ({ ...p, chickenType: opt.value }));
                         setErrors((p) => ({ ...p, chickenType: false }));
                       }}
-                    >
-                      <option value="" disabled>
-                        -- Select chicken type --
-                      </option>
-                      <option value="Laying hen">Laying hen</option>
-                      <option value="Native chicken">Native chicken</option>
-                    </select>
+                      placeholder="-- Select chicken type --"
+                      classNames={selectClassNames(errors.chickenType)}
+                      styles={selectMenuPortalStyle}
+                      menuPortalTarget={document.body}
+                      menuPlacement="bottom"
+                      isSearchable={false}
+                    />
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">
                       Province <span className="text-red-500">*</span>
                     </p>
-                    <input
-                      className={`bg-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 w-full outline-none focus:bg-white border ${errors.province ? "border-red-400 bg-red-50" : "border-transparent focus:border-blue-400"}`}
-                      value={fields.province}
-                      onChange={(e) => {
-                        setFields((p) => ({ ...p, province: e.target.value }));
+                    <Select
+                      unstyled
+                      options={thaiProvinces.map((prov) => ({
+                        value: prov,
+                        label: prov,
+                      }))}
+                      value={
+                        fields.province
+                          ? { value: fields.province, label: fields.province }
+                          : null
+                      }
+                      onChange={(opt) => {
+                        setFields((p) => ({ ...p, province: opt.value }));
                         setErrors((p) => ({ ...p, province: false }));
                       }}
+                      placeholder="-- Select province --"
+                      classNames={selectClassNames(errors.province)}
+                      styles={selectMenuPortalStyle}
+                      menuPortalTarget={document.body}
+                      menuPlacement="bottom"
+                      isSearchable={false}
                     />
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">
-                      Age <span className="text-red-500">*</span>
+                      Age (week) <span className="text-red-500">*</span>
                     </p>
                     <input
                       type="number"
                       min="1"
-                      placeholder="week"
-                      className={`bg-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 w-full outline-none focus:bg-white border ${errors.age ? "border-red-400 bg-red-50" : "border-transparent focus:border-blue-400"}`}
+                      className={`bg-white rounded-lg px-3 py-2 text-sm text-gray-700 w-full outline-none border ${errors.age ? "border-red-400 bg-red-50" : "border-gray-300 focus:border-blue-400"}`}
                       value={fields.age}
                       onChange={(e) => {
                         setFields((p) => ({ ...p, age: e.target.value }));
