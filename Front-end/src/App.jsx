@@ -8,6 +8,12 @@ import Prediction from "./pages/Prediction";
 import Profile from "./pages/Profile";
 import PredictionLogsPage from "./pages/PredictionOutput";
 import PredictionDetail from "./pages/PredictionDetail";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUserManagement from "./pages/admin/UserManagement";
+import AdminVerifyUser from "./pages/admin/VerifyUser";
+import AdminDataManagement from "./pages/admin/DataManagement";
+import AdminDataManagementDetail from "./pages/admin/DataManagementDetail";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("access_token");
@@ -19,19 +25,32 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-  <Route path="/" element={<Welcome />} />
-  <Route path="/login" element={<Login />} />
-  <Route path="/register" element={<Register />} />
-  <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-  <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-  <Route path="/prediction" element={<ProtectedRoute><Prediction /></ProtectedRoute>} />
-  <Route path="/prediction/output" element={<ProtectedRoute><PredictionLogsPage /></ProtectedRoute>} />
+        <Route path="/" element={<Welcome />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+        <Route path="/prediction" element={<ProtectedRoute><Prediction /></ProtectedRoute>} />
+        <Route path="/prediction/output" element={<ProtectedRoute><PredictionLogsPage /></ProtectedRoute>} />
 
-  {/*ชั่วคราว */}
-  <Route path="/prediction/:id" element={<ProtectedRoute><PredictionDetail /></ProtectedRoute>} />
-  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-</Routes>
+        {/*ชั่วคราว */}
+        <Route path="/prediction/:id" element={<ProtectedRoute><PredictionDetail /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="users-management" element={<AdminUserManagement />} />
+          <Route path="verify-users" element={<AdminVerifyUser />} />
+          <Route path="data-management" element={<AdminDataManagement />} />
+          <Route path="data-management/:id" element={<AdminDataManagementDetail />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }
+
 export default App;
