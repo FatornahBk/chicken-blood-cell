@@ -449,19 +449,53 @@ export default function ProfilePage() {
       const { data: result } = await uploadClient.patch(
         "/profile/me",
         formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
 
+      const newFirstName = result.profile?.first_name ?? firstName;
+      const newLastName = result.profile?.last_name ?? lastName;
+      const newAvatarPath = result.profile?.profile_image ?? null;
+      const newAvatarUrl = newAvatarPath ? getImageUrl(newAvatarPath) : null;
+
+      // อัปเดตแบนเนอร์ด้านบน
       setUser((prev) => ({
         ...prev,
-        firstName: result.profile?.first_name ?? prev.firstName,
-        lastName: result.profile?.last_name ?? prev.lastName,
-        avatarUrl: result.profile?.profile_image
-          ? getImageUrl(result.profile.profile_image)
-          : prev.avatarUrl,
+        firstName: newFirstName,
+        lastName: newLastName,
+        avatarUrl: newAvatarUrl ?? prev.avatarUrl,
       }));
+
+      // ── อัปเดตเฉพาะ owner.* ของแต่ละ batch ในเครื่อง ไม่ refetch ทั้งลิสต์ ──
+      const patchOwner = (batch) =>
+        batch.owner
+          ? {
+              ...batch,
+              owner: {
+                ...batch.owner,
+                first_name: newFirstName,
+                last_name: newLastName,
+                profile_image: newAvatarPath ?? batch.owner.profile_image,
+              },
+            }
+          : batch;
+
+      setPredicted((prev) => prev.map(patchOwner));
+      setUnpredicted((prev) => prev.map(patchOwner));
+
+      // sync localStorage เหมือนเดิม
+      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      if (storedUser) {
+        const updatedUser = {
+          ...storedUser,
+          name: `${newFirstName} ${newLastName}`.trim(),
+          profileImage: newAvatarPath ?? storedUser.profileImage,
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("user-updated"));
+      }
+
+      // ❌ ลบบรรทัดนี้ทิ้ง — ตัวการที่ทำให้ทั้ง section กระพริบ
+      // await fetchProfileAndBatches();
     } catch (err) {
       console.error("Failed to save profile:", err);
     } finally {

@@ -3,6 +3,12 @@ import logo from "../assets/Chicken-CBC.png";
 
 const API_BASE_URL = "http://localhost/api";
 
+function resolveProfileImage(path) {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${API_BASE_URL}/${path.replace(/^\/+/, "")}`;
+}
+
 // ── สร้างตัวย่อจากชื่อที่สมัคร ──────────────────────────────
 // "Somchai Jaidee" → "SJ" | "Dr.strang" → "DS" | "Alice" → "AL"
 function getInitials(name = "") {
@@ -120,7 +126,7 @@ const Navbar = () => {
               >
                 <Avatar
                   name={user.name}
-                  profileImage={ API_BASE_URL + user.profileImage ?? null}
+                  profileImage={resolveProfileImage(user.profileImage)}
                 />
                 <div className="flex flex-col leading-tight">
                   <span className="text-xs font-semibold text-gray-800">
