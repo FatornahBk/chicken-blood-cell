@@ -7,10 +7,12 @@ import {
   Trash2,
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
-import { useNavigate } from "react-router-dom";
+import BloodCellDetailModal from "../../components/BloodCellDetailModal";
+import { getImageUrl } from "../../services/api";
 import {
   deleteDatasetById,
   getAllDatasets,
+  getDatasetById,
 } from "../../services/admin/DataManagement";
 import { formatAdminDate } from "../../utils/adminDate";
 
@@ -25,6 +27,7 @@ const getId = (item) =>
   item.batch_id ?? item.dataset_id ?? item.id ?? item.data_id;
 
 const getName = (item) =>
+  item.smear_id ??
   item.batch_name ??
   item.dataset_name ??
   item.title ??
@@ -32,7 +35,11 @@ const getName = (item) =>
   `Dataset #${getId(item) ?? "-"}`;
 
 const getEmail = (item) =>
-  item.email ?? item.user_email ?? item.uploader_email ?? "-";
+  item.user?.email ??
+  item.email ??
+  item.user_email ??
+  item.uploader_email ??
+  "-";
 
 const getStain = (item) =>
   item.stain_type ?? item.stainType ?? item.stain ?? "-";
@@ -45,7 +52,24 @@ const getImageCount = (item) =>
   (Array.isArray(item.images) ? item.images.length : 0);
 
 const getStatus = (item) =>
-  item.status ?? item.prediction_status ?? item.predict_status ?? "pending";
+  item.status ??
+  item.prediction_status ??
+  item.predict_status ??
+  (Array.isArray(item.images) && item.images.length > 0
+    ? item.images.every((image) =>
+        ["complete", "completed", "predicted", "success"].includes(
+          String(image.image_status ?? image.status).toLowerCase(),
+        ),
+      )
+      ? "completed"
+      : item.images.some((image) =>
+          ["processing", "in_progress"].includes(
+            String(image.image_status ?? image.status).toLowerCase(),
+          ),
+        )
+        ? "processing"
+        : "pending"
+    : "pending");
 
 const getCreatedAt = (item) =>
   item.created_at ?? item.createdAt ?? item.uploaded_at ?? item.date;
@@ -57,8 +81,99 @@ const statusStyle = (status) => {
     : "bg-amber-50 text-amber-700";
 };
 
+const cellCountFields = {
+  Heterophil: "numOfHeterophils",
+  Eosinophil: "numOfEosinophils",
+  Basophil: "numOfBasophils",
+  Lymphocyte: "numOfLymphocytes",
+  Monocyte: "numOfMonocytes",
+  Thrombocyte: "numOfThrombocytes",
+};
+
+const normalizePrediction = (prediction) => {
+  if (!prediction) return null;
+
+  let parsedPrediction = prediction;
+  if (typeof prediction === "string") {
+    try {
+      parsedPrediction = JSON.parse(prediction);
+    } catch {
+      return null;
+    }
+  }
+
+  if (parsedPrediction.cell_counts || parsedPrediction.cell_percentages) {
+    return parsedPrediction;
+  }
+
+  const cellCounts = Object.fromEntries(
+    Object.entries(cellCountFields).map(([label, field]) => [
+      label,
+      Number(parsedPrediction[field] ?? 0),
+    ]),
+  );
+  const totalCells = Object.values(cellCounts).reduce(
+    (total, count) => total + count,
+    0,
+  );
+  const cellPercentages = Object.fromEntries(
+    Object.entries(cellCounts).map(([label, count]) => [
+      label,
+      totalCells > 0 ? (count / totalCells) * 100 : 0,
+    ]),
+  );
+  const detections = Array.isArray(parsedPrediction.detections)
+    ? parsedPrediction.detections.map((detection) => ({
+        ...detection,
+        bbox: detection.bbox ?? {
+          x1: detection.x1,
+          y1: detection.y1,
+          x2: detection.x2,
+          y2: detection.y2,
+          width: detection.width,
+          height: detection.height,
+        },
+      }))
+    : [];
+
+  return {
+    cell_counts: cellCounts,
+    cell_percentages: cellPercentages,
+    detections,
+  };
+};
+
+const toModalData = (item) => {
+  const images = Array.isArray(item.images) ? item.images : [];
+  const user = item.user ?? item.owner ?? {};
+  const uploaderName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
+
+  return {
+    id: getId(item),
+    smearId: getName(item),
+    images: images.map((image) => getImageUrl(image.image_path)),
+    imageDetails: images.map((image) => ({
+      url: getImageUrl(image.image_path),
+      totalCells: image.total_cells_in_image ?? null,
+      prediction: normalizePrediction(image.prediction),
+    })),
+    title: item.description ?? "",
+    description: item.description ?? "",
+    status: getStatus(item),
+    chickenType: item.chicken_type ?? "",
+    province: item.province ?? "",
+    age: item.age ?? "",
+    stainType: getStain(item),
+    predictedAt: item.predicted_at ?? item.created_at ?? "",
+    uploaderName: uploaderName || getEmail(item),
+    uploaderAvatar: user.profile_image
+      ? getImageUrl(user.profile_image)
+      : null,
+    uploaderId: user.user_id ?? user.id ?? null,
+  };
+};
+
 function AdminDataManagement() {
-  const navigate = useNavigate();
   const [datasets, setDatasets] = useState([]);
   const [statistics, setStatistics] = useState(emptyStatistics);
   const [meta, setMeta] = useState({
@@ -72,6 +187,8 @@ function AdminDataManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [selectedDataset, setSelectedDataset] = useState(null);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
@@ -83,7 +200,38 @@ function AdminDataManagement() {
         limit: 10,
         email: search,
       });
-      setDatasets(Array.isArray(data?.table_data) ? data.table_data : []);
+      const tableData = Array.isArray(data?.table_data) ? data.table_data : [];
+      const enrichedDatasets = await Promise.all(
+        tableData.map(async (item) => {
+          const id = getId(item);
+          if (id === undefined || id === null) {
+            return item;
+          }
+
+          const hasModalDetail =
+            Array.isArray(item.images) &&
+            item.images.length > 0 &&
+            item.user?.email;
+          if (hasModalDetail) return item;
+
+          try {
+            const detailResponse = await getDatasetById(id);
+            const detail =
+              detailResponse?.batch ??
+              detailResponse?.dataset ??
+              detailResponse?.data ??
+              detailResponse;
+
+            return detail && typeof detail === "object"
+              ? { ...item, ...detail }
+              : item;
+          } catch {
+            return item;
+          }
+        }),
+      );
+
+      setDatasets(enrichedDatasets);
       setStatistics({ ...emptyStatistics, ...data?.statistics });
       setMeta((current) => ({ ...current, ...data?.meta }));
     } catch (err) {
@@ -99,14 +247,15 @@ function AdminDataManagement() {
     return () => window.clearTimeout(timeoutId);
   }, [loadDatasets]);
 
-  const handleDelete = async (item) => {
+  const handleDelete = async () => {
+    const item = deleteCandidate;
+    if (!item) return;
+
     const id = getId(item);
     if (id === undefined || id === null) {
       setError("ไม่พบ ID ของชุดข้อมูล");
       return;
     }
-
-    if (!window.confirm(`Delete "${getName(item)}"?`)) return;
 
     setDeletingId(id);
     setError("");
@@ -121,7 +270,13 @@ function AdminDataManagement() {
       setError(err.response?.data?.message ?? "ไม่สามารถลบชุดข้อมูลได้");
     } finally {
       setDeletingId(null);
+      setDeleteCandidate(null);
     }
+  };
+
+  const closeDeleteModal = () => {
+    if (deletingId !== null) return;
+    setDeleteCandidate(null);
   };
 
   const totalPages = Number(meta.total_pages) || 0;
@@ -232,7 +387,7 @@ function AdminDataManagement() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => navigate(`/admin/data-management/${id}`)}
+                          onClick={() => setSelectedDataset(toModalData(item))}
                           disabled={id === undefined || id === null}
                           className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label={`View ${getName(item)}`}
@@ -241,7 +396,7 @@ function AdminDataManagement() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(item)}
+                          onClick={() => setDeleteCandidate(item)}
                           disabled={deletingId === id}
                           className="rounded-lg border border-rose-200 p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
                           aria-label={`Delete ${getName(item)}`}
@@ -267,6 +422,76 @@ function AdminDataManagement() {
           </div>
         )}
       </section>
+
+      {selectedDataset && (
+        <BloodCellDetailModal
+          data={selectedDataset}
+          onClose={() => setSelectedDataset(null)}
+        />
+      )}
+
+      {deleteCandidate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+          role="presentation"
+          onMouseDown={closeDeleteModal}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dataset-delete-confirm-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <h3
+                id="dataset-delete-confirm-title"
+                className="text-lg font-bold text-slate-950"
+              >
+                Confirm Deletion
+              </h3>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm text-slate-500">
+                Delete this dataset and all of its associated images?
+              </p>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="font-semibold text-slate-950">
+                  Smear ID: {getName(deleteCandidate)}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {getEmail(deleteCandidate)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deletingId === getId(deleteCandidate)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deletingId === getId(deleteCandidate)}
+                className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-600 focus:outline-none focus:ring-4 focus:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deletingId === getId(deleteCandidate)
+                  ? "Processing..."
+                  : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
