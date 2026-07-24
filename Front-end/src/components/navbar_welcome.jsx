@@ -27,11 +27,20 @@ const NavbarWelcome = () => {
         </span>
       </div>
 
-      <button 
-      onClick={() => navigate("/login")}
-      className="bg-[#1b2a3b] text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-[#0f1e2d] active:scale-95 transition-all duration-150 cursor-pointer shadow-sm tracking-wide">
-        Login
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate("/register")}
+          className="border border-[#1b2a3b] text-[#1b2a3b] text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-gray-100 active:scale-95 transition-all duration-150 cursor-pointer tracking-wide"
+        >
+          Sign up
+        </button>
+        <button
+          onClick={() => navigate("/login")}
+          className="bg-[#1b2a3b] text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-[#0f1e2d] active:scale-95 transition-all duration-150 cursor-pointer shadow-sm tracking-wide"
+        >
+          Sign in
+        </button>
+      </div>
     </nav>
   );
 };

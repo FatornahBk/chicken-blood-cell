@@ -116,6 +116,30 @@ const XSmallIcon = () => (
   </svg>
 );
 
+const MapPinIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const BirdIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 7h.01"/>
+    <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20"/>
+    <path d="m20 7 2 .5-2 .5"/>
+    <path d="M10 18v3"/>
+    <path d="M14 17.75V21"/>
+    <path d="M7 18a6 6 0 0 0 3.84-10.61"/>
+  </svg>
+);
+
+const StainIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>
+  </svg>
+);
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHICKEN_TYPES = ["All types", "Laying hen", "Native chicken"];
 const STAIN_TYPES = ["Wright Stain", "Giemsa Stain"];
@@ -225,7 +249,7 @@ function isSameDay(a, b) {
 }
 
 // ─── Dropdown (ใช้ร่วมกันทุก variant) ──────────────────────────────────────────
-function Dropdown({ options, value, onChange, width = "w-[146px]" }) {
+function Dropdown({ options, value, onChange, width = "w-[162px]", icon }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -243,7 +267,13 @@ function Dropdown({ options, value, onChange, width = "w-[146px]" }) {
         onClick={() => setOpen((v) => !v)}
         className="relative flex items-center justify-center bg-white border border-gray-200 rounded-lg px-3 h-[38px] text-[12.5px] text-gray-600 font-medium cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm w-full"
       >
-        <span className="truncate max-w-[calc(100%-24px)]">{value}</span>
+        {icon && (
+          <span className="text-gray-400 mr-1.5 flex items-center shrink-0">
+            {icon}
+          </span>
+        )}
+
+        <span className="truncate max-w-[calc(100%-40px)] text-left">{value}</span>
         <span
           className={`absolute right-3 text-gray-400 flex items-center shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
         >
@@ -536,7 +566,7 @@ const SearchBar = ({
   return (
     <div
       className={`flex flex-col sm:flex-row items-center gap-3 w-full ${
-        variant === "profile" ? "" : "max-w-4xl"
+        variant === "profile" ? "" : "max-w-5xl"
       } ${className}`}
     >
       {/* Search Input + Button */}
@@ -565,6 +595,7 @@ const SearchBar = ({
       {/* Province Filter — เฉพาะหน้า Home */}
       {isHome && (
         <Dropdown
+        icon={<MapPinIcon />}
           options={PROVINCES}
           value={province}
           onChange={(val) => {
@@ -577,6 +608,7 @@ const SearchBar = ({
       {/* Chicken Type Filter */}
       {resolvedShowChickenType && (
         <Dropdown
+        icon={<BirdIcon />}
           options={CHICKEN_TYPES}
           value={chickenType}
           onChange={(val) => {
@@ -589,6 +621,7 @@ const SearchBar = ({
       {/* Stain Type Filter (variant="profile") */}
       {resolvedShowStainType && (
         <Dropdown
+        icon={<StainIcon />}
           options={STAIN_TYPES}
           value={stainType}
           onChange={setStainType}

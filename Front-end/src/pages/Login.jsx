@@ -51,6 +51,7 @@ export default function Login() {
           name: decodedToken.first_name + " " + decodedToken.last_name,
           role: decodedToken.role,
           profileImage: decodedToken.profile_image ?? null,
+          email: decodedToken.email,
         }),
       );
 

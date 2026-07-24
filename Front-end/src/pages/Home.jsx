@@ -8,6 +8,29 @@ import logo from "../assets/Chicken-CBC.png";
 import BloodCellDetailModal from "../components/BloodCellDetailModal";
 import { uploadClient, getImageUrl } from "../services/api";
 
+// ─── Skeleton Component (สำหรับโหลดรอข้อมูลแบบสมูทๆ) ─────────────────────────
+function CardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm animate-pulse flex flex-col gap-3">
+      {/* ส่วนจำลองรูปภาพ (อัตราส่วน 1:1) */}
+      <div className="w-full aspect-square bg-gray-200 rounded-xl" />
+      {/* ส่วนจำลองข้อความหัวข้อ */}
+      <div className="flex flex-col gap-1.5 px-1">
+        <div className="h-3.5 bg-gray-200 rounded-md w-3/4" />
+        <div className="h-3 bg-gray-100 rounded-md w-1/2" />
+      </div>
+      {/* ส่วนจำลองข้อมูลคนอัปโหลดด้านล่าง */}
+      <div className="flex items-center gap-2 mt-1 px-1 pt-2 border-t border-gray-50">
+        <div className="w-7 h-7 rounded-full bg-gray-200 shrink-0" />
+        <div className="flex flex-col gap-1 flex-1">
+          <div className="h-2.5 bg-gray-200 rounded w-20" />
+          <div className="h-2 bg-gray-100 rounded w-12" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const mapCardFromApi = (item) => {
   const images = item.images ?? [];
 
@@ -74,8 +97,10 @@ const HeroSection = ({ onSearch, onFilterChickenType, onSortChange }) => (
 const CardGrid = ({ cards, loading, error, onCardClick }) => {
   if (loading) {
     return (
-      <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
-        <p className="text-sm">กำลังโหลดข้อมูล...</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[...Array(8)].map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
       </div>
     );
   }
@@ -163,7 +188,7 @@ const HomePage = () => {
     per_page: 20,
     total_pages: 0,
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
@@ -189,7 +214,12 @@ const HomePage = () => {
       if (f.startDate) params.startDate = f.startDate;
       if (f.endDate) params.endDate = f.endDate;
 
-      const res = await uploadClient.get("/home/cards", { params });
+      const [apiResponse] = await Promise.all([
+        uploadClient.get("/home/cards", { params }),
+        new Promise((resolve) => setTimeout(resolve, 300)),
+      ]);
+
+      const res = apiResponse;
       const json = res.data;
       const mapped = (json.data ?? []).map(mapCardFromApi);
 
@@ -216,7 +246,7 @@ const HomePage = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchCards(filters);
-    }, 350);
+    }, 300);
     return () => clearTimeout(debounceRef.current);
   }, [filters, fetchCards]);
 

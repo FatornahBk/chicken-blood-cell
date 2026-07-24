@@ -1,8 +1,8 @@
 // BloodCellCard.jsx
 // Reusable card component for blood cell analysis results
 // Used in: HomePage, UploadPage, PredictionPage, SearchResults
-
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
 const STATUS_STYLES = {
@@ -216,62 +216,66 @@ const BloodCellCard = ({
           </div>
 
           {/* More options */}
-          <div className="relative" ref={menuRef}>
-            <button
-              className="text-gray-400 hover:text-gray-600 px-1"
-              onClick={handleMoreClick}
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-              aria-label="More options"
-            >
-              <span className="text-lg leading-none">···</span>
-            </button>
-
-            {menuOpen && (
-              <div
-                className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-100 rounded-md shadow-lg overflow-hidden z-20"
-                onClick={(e) => e.stopPropagation()}
+          {onDelete && (
+            <div className="relative" ref={menuRef}>
+              <button
+                className="text-gray-400 hover:text-gray-600 px-1"
+                onClick={handleMoreClick}
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                aria-label="More options"
               >
-                <button
-                  className="w-full text-left text-xs text-red-600 hover:bg-red-50 px-3 py-2"
-                  onClick={handleDeleteClick}
+                <span className="text-lg leading-none">···</span>
+              </button>
+
+              {menuOpen && (
+                <div
+                  className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-100 rounded-md shadow-lg overflow-hidden z-20"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  ลบโพส
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    className="w-full text-left text-xs text-red-600 hover:bg-red-50 px-3 py-2"
+                    onClick={handleDeleteClick}
+                  >
+                    ลบโพส
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-      {confirmOpen && (
-        <div
-          className="absolute inset-0 bg-black/40 flex items-center justify-center z-30"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-xl shadow-lg w-64 p-4">
-            <p className="text-xs font-semibold text-gray-800 mb-1">
-              คุณต้องการลบโพสต์นี้หรือไม่?
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              การดำเนินการนี้ไม่สามารถย้อนกลับได้
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="text-xs font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
-                onClick={handleCancelDelete}
-              >
-                ยกเลิก
-              </button>
-              <button
-                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                onClick={handleConfirmDelete}
-              >
-                ยืนยัน
-              </button>
+      {confirmOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white rounded-2xl shadow-xl w-96 p-6">
+              <p className="text-base font-semibold text-gray-800 mb-1.5">
+                คุณต้องการลบโพสต์นี้หรือไม่?
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                การดำเนินการนี้ไม่สามารถย้อนกลับได้
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="text-sm font-medium px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100"
+                  onClick={handleCancelDelete}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  onClick={handleConfirmDelete}
+                >
+                  ยืนยัน
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };
