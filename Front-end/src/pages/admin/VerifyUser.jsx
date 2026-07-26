@@ -25,8 +25,8 @@ const normalizeUsers = (data) => {
 
 const normalizeSummary = (data, users = []) => ({
   pending: Number(data?.summary?.pending ?? users.length),
-  approvedToday: Number(data?.summary?.approved_today ?? 0),
-  rejectedToday: Number(data?.summary?.rejected_today ?? 0),
+  approvedTotal: Number(data?.summary?.approved_total ?? 0),
+  rejectedTotal: Number(data?.summary?.rejected_total ?? 0),
 });
 
 function VerifyUser() {
@@ -35,8 +35,8 @@ function VerifyUser() {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [summary, setSummary] = useState({
     pending: 0,
-    approvedToday: 0,
-    rejectedToday: 0,
+    approvedTotal: 0,
+    rejectedTotal: 0,
   });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("pending");
@@ -150,7 +150,7 @@ function VerifyUser() {
     confirmAction?.action === "approve"
       ? "bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-200"
       : confirmAction?.action === "restore"
-        ? "bg-blue-500 hover:bg-blue-600 focus:ring-blue-200"
+        ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-200"
       : "bg-rose-500 hover:bg-rose-600 focus:ring-rose-200";
 
   return (
@@ -174,15 +174,15 @@ function VerifyUser() {
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-lg font-medium text-slate-500">Approved Today</p>
+          <p className="text-lg font-medium text-slate-500">Approved Total</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {summary.approvedToday}
+            {summary.approvedTotal}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-lg font-medium text-slate-500">Rejected Today</p>
+          <p className="text-lg font-medium text-slate-500">Rejected Total</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {summary.rejectedToday}
+            {summary.rejectedTotal}
           </p>
         </article>
       </div>
@@ -286,16 +286,20 @@ function VerifyUser() {
                     <td className="px-6 py-4 text-slate-500">
                       {formatAdminDate(user.created_at)}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {Number(user.is_verified) === 2 ? (
                           <button
                             type="button"
                             disabled={actionUserId === user.user_id}
                             onClick={() => openConfirmModal(user, "restore")}
-                            className="flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Restore ${user.first_name} ${user.last_name} to pending`}
                           >
-                            <RotateCcw className="h-4 w-4" />
+                            <RotateCcw
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Restore to Pending
                           </button>
                         ) : (
@@ -304,19 +308,22 @@ function VerifyUser() {
                               type="button"
                               disabled={actionUserId === user.user_id}
                               onClick={() => openConfirmModal(user, "approve")}
-                              className="rounded-lg bg-emerald-500 p-2 text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-lg border border-emerald-200 p-2 text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                               aria-label={`Approve ${user.first_name} ${user.last_name}`}
                             >
-                              <Check className="h-4 w-4" />
+                              <Check
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
                             </button>
                             <button
                               type="button"
                               disabled={actionUserId === user.user_id}
                               onClick={() => openConfirmModal(user, "reject")}
-                              className="rounded-lg bg-rose-500 p-2 text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-lg border border-rose-200 p-2 text-rose-500 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                               aria-label={`Reject ${user.first_name} ${user.last_name}`}
                             >
-                              <X className="h-4 w-4" />
+                              <X className="h-4 w-4" aria-hidden="true" />
                             </button>
                           </>
                         )}
@@ -354,7 +361,8 @@ function VerifyUser() {
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                  confirmAction.action === "approve"
+                  confirmAction.action === "approve" ||
+                  confirmAction.action === "restore"
                     ? "bg-emerald-100 text-emerald-600"
                     : "bg-rose-100 text-rose-600"
                 }`}
