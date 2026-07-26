@@ -25,7 +25,7 @@ const ADMIN_SIDEBAR_OPTIONS = [
 
 const SideBarAdmin = ({ options = ADMIN_SIDEBAR_OPTIONS }) => {
   return (
-    <aside className="flex h-screen w-72 flex-col border-r border-slate-200 bg-white">
+    <aside className="flex min-h-[calc(100vh-4rem)] w-72 self-stretch flex-col border-r border-slate-200 bg-white">
       <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-slate-900">
