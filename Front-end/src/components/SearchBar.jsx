@@ -249,7 +249,7 @@ function isSameDay(a, b) {
 }
 
 // ─── Dropdown (ใช้ร่วมกันทุก variant) ──────────────────────────────────────────
-function Dropdown({ options, value, onChange, width = "w-[162px]", icon }) {
+function Dropdown({ options, value, onChange, width = "w-[168px]", icon }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -566,8 +566,8 @@ const SearchBar = ({
   return (
     <div
       className={`flex flex-col sm:flex-row items-center gap-3 w-full ${
-        variant === "profile" ? "" : "max-w-5xl"
-      } ${className}`}
+  variant === "profile" ? "" : variant === "home" ? "max-w-5xl" : "max-w-4xl"
+} ${className}`}
     >
       {/* Search Input + Button */}
       <div className="flex flex-1 w-full items-center gap-2">

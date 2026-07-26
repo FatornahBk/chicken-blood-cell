@@ -81,7 +81,9 @@ function SampleCard({ sample, onClick }) {
 
 const Prediction = () => {
   // State สำหรับจัดการประเภทการย้อมสี, ข้อมูล Batch และ Pagination
-  const [activeTab, setActiveTab] = useState("Wright");
+  const [activeTab, setActiveTab] = useState(
+    () => sessionStorage.getItem("prediction_active_tab") || "Wright",
+  );
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -103,7 +105,7 @@ const Prediction = () => {
         const result = await getPendingBatches(activeTab, currentPage, {
           smear_id: searchQuery || undefined,
           chicken_type:
-            searchChickenType !== "Chicken type"
+            searchChickenType && searchChickenType !== "Chicken type"
               ? searchChickenType
               : undefined,
           start_date: formatDate(searchDateRange.start),
@@ -119,6 +121,10 @@ const Prediction = () => {
     };
     fetchBatches();
   }, [activeTab, currentPage, searchQuery, searchChickenType, searchDateRange]);
+
+  useEffect(() => {
+    sessionStorage.setItem("prediction_active_tab", activeTab);
+  }, [activeTab]);
 
   const getPageNumbers = () => {
     if (totalPages <= 5) {

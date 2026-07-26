@@ -111,7 +111,7 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-gray-900 hover:bg-gray-700 active:scale-[0.98] disabled:opacity-50 text-white font-semibold text-sm rounded-xl py-2 transition-all duration-150 mt-2"
           >
-            {loading ? "กำลังเข้าสู่ระบบ..." : "Get Started"}
+            {loading ? "Signing in..." : "Get Started"}
           </button>
         </form>
 

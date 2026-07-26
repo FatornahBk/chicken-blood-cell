@@ -62,13 +62,19 @@ const mapCardFromApi = (item) => {
 };
 
 // ─── HeroSection ─────────────────────────────────────────────────────────────
-const HeroSection = ({ onSearch, onFilterChickenType, onSortChange }) => (
+const HeroSection = ({
+  onSearch,
+  onFilterChickenType,
+  onFilterProvince,
+  onSortChange,
+}) => (
   <section className="flex flex-col items-center justify-center pt-4 pb-24 px-4 bg-gradient-to-b from-sky-100 to-white">
     <div className="w-full flex justify-end mb-4">
       <SearchBar
         variant="home"
         onSearch={onSearch}
         onFilterChickenType={onFilterChickenType}
+        onFilterProvince={onFilterProvince}
         onSortChange={onSortChange}
       />
     </div>
@@ -201,7 +207,13 @@ const HomePage = () => {
   });
   const debounceRef = useRef(null);
 
+  const abortRef = useRef(null); // เพิ่ม ref ใหม่ ไว้ข้าง ๆ debounceRef
+
   const fetchCards = useCallback(async (f) => {
+    if (abortRef.current) abortRef.current.abort(); // ยกเลิก request เก่าที่ยังค้าง
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -215,14 +227,12 @@ const HomePage = () => {
       if (f.endDate) params.endDate = f.endDate;
 
       const [apiResponse] = await Promise.all([
-        uploadClient.get("/home/cards", { params }),
+        uploadClient.get("/home/cards", { params, signal: controller.signal }), // เพิ่ม signal
         new Promise((resolve) => setTimeout(resolve, 300)),
       ]);
 
-      const res = apiResponse;
-      const json = res.data;
+      const json = apiResponse.data;
       const mapped = (json.data ?? []).map(mapCardFromApi);
-
       setCards(mapped);
       setMeta(
         json.meta ?? {
@@ -233,6 +243,7 @@ const HomePage = () => {
         },
       );
     } catch (err) {
+      if (err.name === "CanceledError" || err.name === "AbortError") return; // ถูกยกเลิกเอง ไม่ใช่ error จริง ไม่ต้อง setError
       setError(
         err.response?.data?.message || err.message || "ไม่สามารถดึงข้อมูลได้",
       );
@@ -262,6 +273,10 @@ const HomePage = () => {
 
   const handleFilterChickenType = (type) => {
     setFilters((prev) => ({ ...prev, chickenType: type, page: 1 }));
+  };
+
+  const handleFilterProvince = (province) => {
+    setFilters((prev) => ({ ...prev, province: province ?? null, page: 1 }));
   };
 
   const handlePageChange = (page) => {
@@ -296,6 +311,7 @@ const HomePage = () => {
         <HeroSection
           onSearch={handleSearch}
           onFilterChickenType={handleFilterChickenType}
+          onFilterProvince={handleFilterProvince}
           onSortChange={handleSortChange}
         />
         {/* ความกว้างสูงสุด 1400px, centered, padding รอบ */}

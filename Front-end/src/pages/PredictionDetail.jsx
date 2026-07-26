@@ -181,7 +181,7 @@ function PredictionDetail() {
                     border border-gray-200 transition-colors"
                 >
                   {isLoading
-                    ? "กำลังทำนาย..."
+                    ? "Predicting..."
                     : `Predict (${selectedImages.length})`}
                 </button>
               </div>

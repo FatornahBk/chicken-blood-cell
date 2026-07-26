@@ -29,32 +29,17 @@ function CardSkeleton() {
     </div>
   );
 }
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
-const IconPredicted = (
+const IconChevron = ({ open }) => (
   <svg
-    width="16"
-    height="16"
+    width="18"
+    height="18"
     viewBox="0 0 24 24"
-    fill="none"
-    stroke="#2d6a9f"
-    strokeWidth="2"
+    fill="currentColor"
+    className={`text-gray-400 transition-transform duration-200 shrink-0 ${
+      open ? "rotate-90" : ""
+    }`}
   >
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-  </svg>
-);
-const IconUnpredicted = (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#2d6a9f"
-    strokeWidth="2"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
+    <polygon points="6 4 20 12 6 20" />
   </svg>
 );
 
@@ -219,35 +204,35 @@ function ProfileBanner({ user, onSave, saving }) {
               </div>
 
               <div className="flex gap-6 text-center">
-                <div>
-                  <div
-                    className="text-xl font-semibold leading-tight"
-                    style={{ color: "#e8a020" }}
-                  >
-                    {user.totalCompletedBatches}
-                  </div>
-                  <div
-                    className="text-sm font-medium mt-0.5"
-                    style={{ color: "#6b8ca8" }}
-                  >
-                    Completed
-                  </div>
-                </div>
-                <div>
-                  <div
-                    className="text-xl font-semibold leading-tight"
-                    style={{ color: "#6b8ca8" }}
-                  >
-                    {user.totalPendingBatches}
-                  </div>
-                  <div
-                    className="text-sm font-medium mt-0.5"
-                    style={{ color: "#6b8ca8" }}
-                  >
-                    Pending
-                  </div>
-                </div>
-              </div>
+  <div>
+    <div
+      className="text-xl font-semibold leading-tight"
+      style={{ color: "#6b8ca8" }}
+    >
+      {user.totalCompletedBatches}
+    </div>
+    <div
+      className="text-sm font-medium mt-0.5"
+      style={{ color: "#22a555" }}   // Completed = เขียว
+    >
+      Completed
+    </div>
+  </div>
+  <div>
+    <div
+      className="text-xl font-semibold leading-tight"
+      style={{ color: "#6b8ca8" }}
+    >
+      {user.totalPendingBatches}
+    </div>
+    <div
+      className="text-sm font-medium mt-0.5"
+      style={{ color: "#e8a020" }}   // Pending = ส้ม
+    >
+      Pending
+    </div>
+  </div>
+</div>
             </>
           )}
         </div>
@@ -327,11 +312,27 @@ function ProfileBanner({ user, onSave, saving }) {
 }
 
 // ─── Section Header ───────────────────────────────────────────────────────────
-function SectionHeader({ icon, title }) {
+function SectionHeader({ title, open, onToggle }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-4">
-      {icon}
-      {title}
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 text-base font-semibold text-gray-700 mb-4 select-none"
+    >
+      <IconChevron open={open} />
+      <span>{title}</span>
+    </button>
+  );
+}
+
+function Collapsible({ open, children }) {
+  return (
+    <div
+      className={`grid transition-all duration-300 ease-in-out ${
+        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+      }`}
+    >
+      <div className="overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -428,6 +429,8 @@ export default function ProfilePage() {
   const [unpredicted, setUnpredicted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPredicted, setShowPredicted] = useState(true);
+  const [showUnpredicted, setShowUnpredicted] = useState(true);
 
   const navigate = useNavigate();
   const [selectedCard, setSelectedCard] = useState(null);
@@ -615,90 +618,104 @@ export default function ProfilePage() {
 
         {/* Predicted Items */}
         <section className="mb-8 mt-6">
-          <SectionHeader icon={IconPredicted} title="Predicted Items" />
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-          ) : predicted.length === 0 ? (
-            <p className="text-sm text-gray-400">No predicted items found.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {predicted.map((batch) => (
-                <BloodCellCard
-                  key={batch.batch_id}
-                  images={(batch.images ?? []).map((img) =>
-                    getImageUrl(img.image_path),
-                  )}
-                  title={batch.description}
-                  status={batch.status}
-                  issueId={batch.smear_id}
-                  chickenType={batch.chicken_type}
-                  province={batch.province}
-                  age={batch.age}
-                  stainType={batch.stain_type}
-                  uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                  uploaderDate={new Date(batch.created_at).toLocaleDateString(
-                    "th-TH",
-                    { day: "numeric", month: "short", year: "numeric" },
-                  )}
-                  avatarUrl={
-                    batch.owner?.profile_image
-                      ? getImageUrl(batch.owner.profile_image)
-                      : null
-                  }
-                  onClick={(idx) => handleCardClick(batch, idx)}
-                  onDelete={() => handleDeleteBatch(batch.batch_id)}
-                />
-              ))}
-            </div>
-          )}
+          <SectionHeader
+            title="Predicted Items"
+            open={showPredicted}
+            onToggle={() => setShowPredicted((v) => !v)}
+          />
+          <Collapsible open={showPredicted}>
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : predicted.length === 0 ? (
+              <p className="text-sm text-gray-400">No predicted items found.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {predicted.map((batch) => (
+                  <BloodCellCard
+                    key={batch.batch_id}
+                    images={(batch.images ?? []).map((img) =>
+                      getImageUrl(img.image_path),
+                    )}
+                    title={batch.description}
+                    status={batch.status}
+                    issueId={batch.smear_id}
+                    chickenType={batch.chicken_type}
+                    province={batch.province}
+                    age={batch.age}
+                    stainType={batch.stain_type}
+                    uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
+                    uploaderDate={new Date(batch.created_at).toLocaleDateString(
+                      "th-TH",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    )}
+                    avatarUrl={
+                      batch.owner?.profile_image
+                        ? getImageUrl(batch.owner.profile_image)
+                        : null
+                    }
+                    onClick={(idx) => handleCardClick(batch, idx)}
+                    onDelete={() => handleDeleteBatch(batch.batch_id)}
+                  />
+                ))}
+              </div>
+            )}
+          </Collapsible>
         </section>
 
         {/* Unpredicted Items */}
         <section>
-          <SectionHeader icon={IconUnpredicted} title="Unpredicted Items" />
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-          ) : unpredicted.length === 0 ? (
-            <p className="text-sm text-gray-400">No unpredicted items found.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {unpredicted.map((batch) => (
-                <BloodCellCard
-                  key={batch.batch_id}
-                  images={(batch.images ?? []).map((img) =>
-                    getImageUrl(img.image_path),
-                  )}
-                  title={batch.description}
-                  status={batch.status}
-                  issueId={batch.smear_id}
-                  chickenType={batch.chicken_type}
-                  province={batch.province}
-                  age={batch.age}
-                  stainType={batch.stain_type}
-                  uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                  uploaderDate={new Date(batch.created_at).toLocaleDateString(
-                    "th-TH",
-                    { day: "numeric", month: "short", year: "numeric" },
-                  )}
-                  avatarUrl={
-                    batch.owner?.profile_image
-                      ? getImageUrl(batch.owner.profile_image)
-                      : null
-                  }
-                  onClick={(idx) => handleCardClick(batch, idx)}
-                  onDelete={() => handleDeleteBatch(batch.batch_id)}
-                />
-              ))}
-            </div>
-          )}
+          <SectionHeader
+            title="Unpredicted Items"
+            open={showUnpredicted}
+            onToggle={() => setShowUnpredicted((v) => !v)}
+          />
+          <Collapsible open={showUnpredicted}>
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : unpredicted.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                No unpredicted items found.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {unpredicted.map((batch) => (
+                  <BloodCellCard
+                    key={batch.batch_id}
+                    images={(batch.images ?? []).map((img) =>
+                      getImageUrl(img.image_path),
+                    )}
+                    title={batch.description}
+                    status={batch.status}
+                    issueId={batch.smear_id}
+                    chickenType={batch.chicken_type}
+                    province={batch.province}
+                    age={batch.age}
+                    stainType={batch.stain_type}
+                    uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
+                    uploaderDate={new Date(batch.created_at).toLocaleDateString(
+                      "th-TH",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    )}
+                    avatarUrl={
+                      batch.owner?.profile_image
+                        ? getImageUrl(batch.owner.profile_image)
+                        : null
+                    }
+                    onClick={(idx) => handleCardClick(batch, idx)}
+                    onDelete={() => handleDeleteBatch(batch.batch_id)}
+                  />
+                ))}
+              </div>
+            )}
+          </Collapsible>
         </section>
       </main>
       {selectedCard && (

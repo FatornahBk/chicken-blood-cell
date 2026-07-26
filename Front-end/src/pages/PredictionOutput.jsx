@@ -15,6 +15,15 @@ const CELL_COLOR_MAP = {
   Thrombocyte: "#fb5607",
 };
 
+const ALL_CLASSES = [
+  "Basophil",
+  "Eosinophil",
+  "Heterophil",
+  "Lymphocyte",
+  "Monocyte",
+  "Thrombocyte",
+];
+
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 
@@ -170,6 +179,33 @@ const FullscreenCanvas = ({ imageUrl, classes, onClose }) => {
     return () => clearTimeout(timer);
   }, [fitSize]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      setScale((prevScale) => {
+        const newScale = Math.min(
+          Math.max(prevScale - e.deltaY * 0.001, MIN_SCALE),
+          MAX_SCALE,
+        );
+        setOffset((prevOffset) =>
+          clampOffset(
+            prevOffset,
+            newScale,
+            container.offsetWidth,
+            container.offsetHeight,
+          ),
+        );
+        return newScale;
+      });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, []);
+
   return (
     <div
       className="relative rounded-md shadow-2xl overflow-hidden"
@@ -182,23 +218,6 @@ const FullscreenCanvas = ({ imageUrl, classes, onClose }) => {
       <div
         ref={containerRef}
         className="relative w-full h-full"
-        onWheel={(e) => {
-          e.preventDefault();
-          const newScale = Math.min(
-            Math.max(scale - e.deltaY * 0.001, MIN_SCALE),
-            MAX_SCALE,
-          );
-          const container = containerRef.current;
-          if (!container) return;
-          const clamped = clampOffset(
-            offset,
-            newScale,
-            container.offsetWidth,
-            container.offsetHeight,
-          );
-          setScale(newScale);
-          setOffset(clamped);
-        }}
         onMouseDown={(e) => {
           setDragging(true);
           setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -364,6 +383,21 @@ export default function PredictionLogsPage() {
     (sum, v) => sum + v.count,
     0,
   );
+  const caseCellCounts = imageList.reduce((acc, img) => {
+    Object.entries(img.classes ?? {}).forEach(([cls, data]) => {
+      const count = data.detections?.length ?? data.count ?? 0;
+      acc[cls] = (acc[cls] || 0) + count;
+    });
+    return acc;
+  }, {});
+
+  const caseTotal = Object.values(caseCellCounts).reduce((s, v) => s + v, 0);
+  const totalImagesInCase = imageList.length;
+
+  const lymphCount = caseCellCounts["Lymphocyte"] || 0;
+  const heteroCount = caseCellCounts["Heterophil"] || 0;
+  const hlRatio =
+    lymphCount > 0 ? (heteroCount / lymphCount).toFixed(2) : "0.00";
   const getImagePathByImageId = (imageId) => {
     if (imageId == null || !imagePathMap) return null;
     return imagePathMap[imageId] ?? null;
@@ -474,6 +508,33 @@ export default function PredictionLogsPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedImages]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      setScale((prevScale) => {
+        const newScale = Math.min(
+          Math.max(prevScale - e.deltaY * 0.001, MIN_SCALE),
+          MAX_SCALE,
+        );
+        setOffset((prevOffset) =>
+          clampOffset(
+            prevOffset,
+            newScale,
+            container.offsetWidth,
+            container.offsetHeight,
+          ),
+        );
+        return newScale;
+      });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [selectedImagePath]);
+
   const colorPalette = [
     { bar: "bg-gray-700", dot: "bg-gray-700" },
     { bar: "bg-orange-400", dot: "bg-orange-400" },
@@ -483,7 +544,8 @@ export default function PredictionLogsPage() {
     { bar: "bg-red-400", dot: "bg-red-400" },
   ];
   const [description, setDescription] = useState("");
-  const [toast, setToast] = useState(null); // { message, type: "success" | "error" }
+  const [resultTab, setResultTab] = useState("perImage");
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -512,7 +574,7 @@ export default function PredictionLogsPage() {
     <>
       <Navbar />
       <div className="bg-gradient-to-br from-slate-100 to-blue-50 p-4 min-h-[calc(100vh-88px)] flex flex-col justify-center items-center">
-        <div className="flex gap-4 h-[calc(100vh-190px)] w-full max-w-[1220px] justify-center">
+        <div className="flex gap-4 h-[calc(100vh-160px)] w-full max-w-[1220px] justify-center">
           {/* ── Column 1: Image list ── */}
           <div className="w-[340px] shrink-0 bg-white/80  backdrop-blur rounded-xl shadow-sm border border-blue-100 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-blue-50">
@@ -625,23 +687,6 @@ export default function PredictionLogsPage() {
                       : "340px"
                     : "340px",
                   transition: "width 0.2s ease, height 0.2s ease",
-                }}
-                onWheel={(e) => {
-                  e.preventDefault();
-                  const newScale = Math.min(
-                    Math.max(scale - e.deltaY * 0.001, MIN_SCALE),
-                    MAX_SCALE,
-                  );
-                  const container = containerRef.current;
-                  if (!container) return;
-                  const clamped = clampOffset(
-                    offset,
-                    newScale,
-                    container.offsetWidth,
-                    container.offsetHeight,
-                  );
-                  setScale(newScale);
-                  setOffset(clamped);
                 }}
                 onMouseDown={(e) => {
                   setDragging(true);
@@ -879,55 +924,139 @@ export default function PredictionLogsPage() {
             </div>
 
             {/* Cell Distribution card */}
-            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex-1">
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-500 rounded-t-lg">
-                <h3 className="font-bold text-white text-sm">
-                  Prediction Results
-                </h3>
-              </div>
-              <div className="p-4">
-                {Object.keys(CELL_COLOR_MAP).map((cls) => {
-                  const val = cellCounts[cls];
-                  const pct =
-                    val && grandTotal > 0
-                      ? ((val.count / grandTotal) * 100).toFixed(1)
-                      : "0.0";
-                  const color = CELL_COLOR_MAP[cls];
-                  return (
-                    <div key={cls} className="mb-2">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ background: color }}
-                          />
-                          <span className="text-xs text-gray-700">{cls}</span>
-                        </div>
-                        <span className="text-xs font-medium text-gray-800">
-                          {pct}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1">
-                        <div
-                          className="h-1 rounded-full transition-all duration-700"
-                          style={{ width: `${pct}%`, background: color }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex-1 flex flex-col min-h-0">
+              <div className="flex bg-blue-500 rounded-t-lg overflow-hidden shrink-0">
+                <button
+                  onClick={() => setResultTab("perImage")}
+                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${resultTab === "perImage" ? "bg-blue-600 text-white" : "text-blue-100 hover:bg-blue-600/50"}`}
+                >
+                  Per image
+                </button>
+                <button
+                  onClick={() => setResultTab("wholeCase")}
+                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${resultTab === "wholeCase" ? "bg-blue-600 text-white" : "text-blue-100 hover:bg-blue-600/50"}`}
+                >
+                  Whole case
+                </button>
               </div>
 
-              {/* Total */}
-              <div className="mx-4 mb-4 mt-2 flex items-center justify-between pt-2 border-t border-gray-200">
-                <span className="text-sm text-gray-500">Total cells</span>
-                <span className="text-sm font-medium text-gray-700">
-                  {grandTotal}
-                </span>
+              <div className="flex-1 overflow-y-auto flex flex-col">
+                {resultTab === "perImage" && (
+                  <>
+                    <div className="p-4 pt-8">
+                      {ALL_CLASSES.map((cls) => {
+                        const val = cellCounts[cls];
+                        const count = val?.count ?? 0;
+                        const pct =
+                          val && grandTotal > 0
+                            ? ((val.count / grandTotal) * 100).toFixed(1)
+                            : "0.0";
+                        const color = CELL_COLOR_MAP[cls];
+                        return (
+                          <div key={cls} className="mb-2">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ background: color }}
+                                />
+                                <span className="text-xs text-gray-700">
+                                  {cls}
+                                </span>
+                              </div>
+                              <span className="text-xs">
+                                <span className="font-semibold text-gray-500">
+                                  {count}
+                                </span>{" "}
+                                <span className="font-normal text-gray-400">
+                                  ({pct}%)
+                                </span>
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div
+                                className="h-1.5 rounded-full transition-all duration-700"
+                                style={{ width: `${pct}%`, background: color }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Total */}
+                    <div className="mx-4 mb-4 mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
+                      <span className="text-base text-gray-500">
+                        Total cells
+                      </span>
+                      <span className="text-base font-semibold text-gray-800">
+                        {grandTotal}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {resultTab === "wholeCase" && (
+                  <div>
+                    <div className="px-4 pt-4 pb-4 grid grid-cols-2 gap-2">
+                      <div className="border border-gray-200 rounded-lg py-1 text-center">
+                        <p className="text-md font-bold text-gray-800">
+                          {caseTotal}
+                        </p>
+                        <p className="text-xs text-gray-500">Total cells</p>
+                      </div>
+                      <div className="border border-gray-200 rounded-lg py-1 text-center">
+                        <p className="text-md font-bold text-gray-800">
+                          {totalImagesInCase}
+                        </p>
+                        <p className="text-xs text-gray-500">Images</p>
+                      </div>
+                    </div>
+                    <div className="p-4 pt-2">
+                      {ALL_CLASSES.map((cls) => {
+                        const count = caseCellCounts[cls] || 0;
+                        const pct =
+                          caseTotal > 0
+                            ? Math.round((count / caseTotal) * 100)
+                            : 0;
+                        const color = CELL_COLOR_MAP[cls];
+                        return (
+                          <div key={cls} className="mb-2">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ background: color }}
+                                />
+                                <span className="text-xs text-gray-700">
+                                  {cls}
+                                </span>
+                              </div>
+                              <span className="text-xs">
+                                <span className="font-semibold text-gray-500">
+                                  {count}
+                                </span>{" "}
+                                <span className="font-normal text-gray-400">
+                                  ({pct}%)
+                                </span>
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div
+                                className="h-1.5 rounded-full transition-all duration-700"
+                                style={{ width: `${pct}%`, background: color }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Save button */}
-              <div className="px-4 pb-3">
+              <div className="px-4 pb-3 pt-2 shrink-0 bg-white/95 border-t border-gray-100">
                 <button
                   onClick={handleSave}
                   className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-green-400 hover:bg-green-500 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 text-sm"

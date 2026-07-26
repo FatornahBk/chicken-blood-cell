@@ -468,6 +468,7 @@ const Welcome = () => {
   const filteredCells = selectedStain
     ? CELLS.filter((c) => c.stain === selectedStain)
     : CELLS;
+  const totalCells = predictionResults.reduce((sum, row) => sum + row.count, 0);
 
   const visibleCards = [
     filteredCells[
@@ -692,8 +693,8 @@ const Welcome = () => {
         className="w-full bg-cover bg-center"
         style={{ backgroundImage: "url('/src/assets/VerifyUsers.png')" }}
       >
-        <section className="flex gap-20 px-8 pt-28 pb-32 max-w-5xl mx-auto items-stretch">
-          <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3">
+        <section className="flex gap-20 px-8 pt-28 pb-32 max-w-5xl mx-auto items-start">
+          <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[600px]">
             <p className="text-[18px] font-semibold text-gray-700 tracking-wide">
               Select Stain Type
             </p>
@@ -793,14 +794,14 @@ const Welcome = () => {
 
             <button
               onClick={handlePredict}
-              className={`w-full py-4 text-white font-bold text-lg rounded-xl tracking-widest transition-colors duration-200 cursor-pointer
+              className={`w-full py-4 text-white font-bold text-lg rounded-xl tracking-widest transition-colors duration-200 cursor-pointer mt-auto
     ${uploadedFile ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-400 hover:bg-gray-500"}`}
             >
               Predict
             </button>
           </div>
 
-          <div className="flex-[1.4] bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3">
+          <div className="flex-[1.4] bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[600px]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h3 className="font-playfair text-lg font-bold text-gray-900">
@@ -1045,18 +1046,18 @@ const Welcome = () => {
                 </div>
               )}
             </div>
-            {/* Empty state */}
-            {predictionResults.length === 0 && (
-              <div className="flex-1 min-h-[250px] flex items-center justify-center bg-gray-50 rounded-xl">
-                <p className="text-gray-400 text-sm font-medium">
-                  There are currently no prediction results.
-                </p>
-              </div>
-            )}
+            <div className="flex-1 overflow-y-auto">
+              {/* Empty state */}
+              {predictionResults.length === 0 && (
+                <div className="h-full min-h-[250px] flex items-center justify-center bg-gray-50 rounded-xl">
+                  <p className="text-gray-400 text-sm font-medium">
+                    There are currently no prediction results.
+                  </p>
+                </div>
+              )}
 
-            {/* Table */}
-            {predictionResults.length > 0 && (
-              <>
+              {/* Table */}
+              {predictionResults.length > 0 && (
                 <table className="w-5/6 text-sm table-fixed mx-auto">
                   <thead>
                     <tr className="border-b border-gray-200">
@@ -1071,37 +1072,42 @@ const Welcome = () => {
                       </th>
                     </tr>
                   </thead>
-                </table>
-                <div>
-                  <table className="w-5/6  text-sm table-fixed mx-auto">
-                    <tbody>
-                      {predictionResults.map((row) => (
-                        <tr
-                          key={row.type}
-                          className="border-b border-gray-50 hover:bg-blue-50/40 transition-colors"
+                  <tbody>
+                    {predictionResults.map((row) => (
+                      <tr
+                        key={row.type}
+                        className="border-b border-gray-50 hover:bg-blue-50/40 transition-colors"
+                      >
+                        <td
+                          className="py-1.5 px-3 font-semibold text-[13px] w-1/3"
+                          style={{ color: row.color }}
                         >
-                          <td
-                            className="py-1.5 px-3 font-semibold text-[13px] w-1/3"
-                            style={{ color: row.color }}
-                          >
-                            {row.type}
-                          </td>
-                          <td className="py-1.5 px-3 text-gray-600 text-[13px] w-1/3 text-center">
-                            {row.count}
-                          </td>
-                          <td className="py-1.5 px-3 font-semibold text-[13px] text-green-500 w-1/3 text-center">
-                            {row.confidence ? `${row.confidence}%` : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+                          {row.type}
+                        </td>
+                        <td className="py-1.5 px-3 text-gray-600 text-[13px] w-1/3 text-center">
+                          {row.count}
+                        </td>
+                        <td className="py-1.5 px-3 font-semibold text-[13px] text-green-500 w-1/3 text-center">
+                          {row.confidence ? `${row.confidence}%` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+
+                    <tr className="border-t-2 border-gray-300">
+                      <td className="py-2 px-3 font-semibold text-[13px] text-gray-800 w-1/3">
+                        Total cells
+                      </td>
+                      <td className="py-2 px-3 font-semibold text-[13px] text-gray-800 w-1/3 text-center">
+                        {totalCells}
+                      </td>
+                      <td className="py-2 px-3 w-1/3"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </section>
-
         <Footer />
       </div>
 

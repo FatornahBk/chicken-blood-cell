@@ -11,6 +11,15 @@ const CELL_COLORS = {
   Thrombocyte: "#fb5607",
 };
 
+const CELL_ORDER = [
+  "Basophil",
+  "Eosinophil",
+  "Heterophil",
+  "Lymphocyte",
+  "Monocyte",
+  "Thrombocyte",
+];
+
 // draws the image letterboxed inside the canvas + bounding boxes on top
 // `detections` is the flat array from the API: [{ bbox: {x1,y1,x2,y2,width,height}, class_name, confidence }, ...]
 const drawBoundingBoxes = (canvas, img, detections, width, height) => {
@@ -120,22 +129,51 @@ export default function BloodCellDetailModal({
   const imageDetails = info.imageDetails || [];
   const activePrediction = imageDetails[activeThumb]?.prediction || null;
 
-  const distribution = activePrediction
-    ? Object.entries(activePrediction.cell_percentages || {}).map(
-        ([label, percent]) => ({
-          label,
-          percent,
-          color: CELL_COLORS[label] || "#94a3b8",
-        }),
-      )
-    : info.distribution || [];
-
   const total = activePrediction
     ? Object.values(activePrediction.cell_counts || {}).reduce(
         (sum, c) => sum + c,
         0,
       )
-    : (info.total ?? distribution.reduce((sum, d) => sum + d.percent, 0));
+    : (info.total ?? 0);
+
+  const distribution = activePrediction
+    ? CELL_ORDER.map((label) => {
+        const count = activePrediction.cell_counts?.[label] || 0;
+        return {
+          label,
+          count,
+          percent: total > 0 ? (count / total) * 100 : 0,
+          color: CELL_COLORS[label] || "#94a3b8",
+        };
+      })
+    : info.distribution || [];
+
+  const aggregatedCounts = imageDetails.reduce((acc, img) => {
+    const counts = img?.prediction?.cell_counts || {};
+    Object.entries(counts).forEach(([label, count]) => {
+      acc[label] = (acc[label] || 0) + count;
+    });
+    return acc;
+  }, {});
+
+  const aggregatedTotal = Object.values(aggregatedCounts).reduce(
+    (sum, c) => sum + c,
+    0,
+  );
+
+  const aggregatedDistribution = Object.entries(aggregatedCounts)
+    .map(([label, count]) => ({
+      label,
+      count,
+      percent: aggregatedTotal > 0 ? (count / aggregatedTotal) * 100 : 0,
+      color: CELL_COLORS[label] || "#94a3b8",
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const heterophilCount = aggregatedCounts.Heterophil || 0;
+  const lymphocyteCount = aggregatedCounts.Lymphocyte || 0;
+  const hlRatio =
+    lymphocyteCount > 0 ? (heterophilCount / lymphocyteCount).toFixed(2) : "-";
 
   const rawAge = info.age;
   const age =
@@ -162,33 +200,45 @@ export default function BloodCellDetailModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [thumbnails.length]);
 
-  const updateActiveThumb = (newIndex) => {
-    const clamped = Math.max(0, Math.min(thumbnails.length - 1, newIndex));
-    setActiveThumb(clamped);
-    setThumbStart((prevStart) => {
-      if (clamped < prevStart) return clamped;
-      if (clamped > prevStart + 3) return clamped - 3;
-      return prevStart;
+  const moveThumb = (delta) => {
+    setActiveThumb((prev) => {
+      const clamped = Math.max(
+        0,
+        Math.min(thumbnails.length - 1, prev + delta),
+      );
+      setThumbStart((prevStart) => {
+        if (clamped < prevStart) return clamped;
+        if (clamped > prevStart + 3) return clamped - 3;
+        return prevStart;
+      });
+      return clamped;
     });
   };
 
-  const handlePrevThumb = () => {
-    updateActiveThumb(activeThumb - 1);
+  const updateActiveThumb = (newIndex) => {
+    setActiveThumb((prev) => {
+      const clamped = Math.max(0, Math.min(thumbnails.length - 1, newIndex));
+      setThumbStart((prevStart) => {
+        if (clamped < prevStart) return clamped;
+        if (clamped > prevStart + 3) return clamped - 3;
+        return prevStart;
+      });
+      return clamped;
+    });
   };
 
-  const handleNextThumb = () => {
-    updateActiveThumb(activeThumb + 1);
-  };
+  const handlePrevThumb = () => moveThumb(-1);
+  const handleNextThumb = () => moveThumb(1);
 
   const navigate = useNavigate();
-const handleProfileClick = () => {
-  if (!doctorId) return;
-  if (typeof onProfileClick === "function") {
-    onProfileClick(doctorId, info);
-  }
-  onClose();
-  navigate(`/profile/${doctorId}`);
-};
+  const handleProfileClick = () => {
+    if (!doctorId) return;
+    if (typeof onProfileClick === "function") {
+      onProfileClick(doctorId, info);
+    }
+    onClose();
+    navigate(`/profile/${doctorId}`);
+  };
 
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -229,7 +279,7 @@ const handleProfileClick = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden"
+        className="relative bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 overflow-hidden"
         style={{ fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif" }}
       >
         {/* Header */}
@@ -238,7 +288,9 @@ const handleProfileClick = () => {
             <h2 className="text-base font-semibold text-slate-700 tracking-wide">
               {description}
             </h2>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
 
           <button
             onClick={onClose}
@@ -262,8 +314,80 @@ const handleProfileClick = () => {
         </div>
 
         {/* Body */}
-        <div className="flex gap-5 p-5">
-          {/* Left: image section */}
+        <div className="flex gap-1 p-8">
+          {/* Left: post-level summary (aggregated across every image) */}
+          <div className="flex flex-col w-64 flex-shrink-0">
+            <div className="rounded-lg overflow-hidden border border-blue-100 shadow-sm h-full flex flex-col">
+              <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500">
+                <p className="text-white text-sm font-bold">Post Summary</p>
+                <p className="text-blue-100 text-[11px] mt-0.5">
+                  By cell type · {imageDetails.length || thumbnails.length}{" "}
+                  images
+                </p>
+              </div>
+
+              <div className="p-4 flex flex-col flex-1">
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="border border-gray-200 rounded-lg py-1 text-center">
+                    <p className="text-xl font-bold text-slate-800">
+                      {aggregatedTotal}
+                    </p>
+                    <p className="text-xs text-slate-400">Total cells</p>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg py-1 text-center">
+                    <p className="text-xl font-bold text-slate-800">
+                      {imageDetails.length || thumbnails.length}
+                    </p>
+                    <p className="text-xs text-slate-400">Images</p>
+                  </div>
+                </div>
+
+                {aggregatedDistribution.length === 0 ? (
+                  <p className="text-slate-400 text-xs">No summary data</p>
+                ) : (
+                  aggregatedDistribution.map((cell) => (
+                    <div key={cell.label} className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ background: cell.color }}
+                          />
+                          <span className="text-sm text-gray-700">
+                            {cell.label}
+                          </span>
+                        </div>
+                        <span className="text-sm">
+                          <span className="font-semibold text-gray-500">
+                            {cell.count}
+                          </span>{" "}
+                          <span className="font-normal text-gray-400">
+                            ({cell.percent.toFixed(0)}%)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="h-1.5 rounded-full transition-all duration-700"
+                          style={{
+                            width: `${cell.percent}%`,
+                            background: cell.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                <div className="mt-auto pt-2 border-t border-dashed border-gray-200">
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Totals across all images in this post.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Middle: image section */}
           <div className="flex flex-col gap-3 flex-1 min-w-0">
             {/* Main image with bounding box canvas (static, no zoom/pan) */}
 
@@ -356,40 +480,38 @@ const handleProfileClick = () => {
           </div>
 
           {/* Right: info section */}
-          <div className="flex flex-col gap-4 w-56 flex-shrink-0">
+          <div className="flex flex-col gap-4 w-60 flex-shrink-0">
             {/* Doctor info */}
             <div className="flex items-center gap-3 rounded-lg -m-1 p-1">
-  {doctorAvatar ? (
-    <img
-      src={doctorAvatar}
-      alt="doctor"
-      className="w-10 h-10 rounded-full object-cover ring-blue-200"
-      onError={(e) => {
-        e.target.style.display = "none";
-      }}
-    />
-  ) : (
-    <div className="w-10 h-10 rounded-full bg-blue-100 ring-blue-200 flex items-center justify-center text-blue-600 text-xs font-bold">
-      {doctorName
-        ? doctorName
-            .trim()
-            .split(/\s+/)
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase()
-        : "Dr"}
-    </div>
-  )}
-  <div>
-    <p className="text-sm font-bold text-slate-800">
-      {doctorName}
-    </p>
-    {doctorDate && (
-      <p className="text-xs text-slate-400">{doctorDate}</p>
-    )}
-  </div>
-</div>
+              {doctorAvatar ? (
+                <img
+                  src={doctorAvatar}
+                  alt="doctor"
+                  className="w-10 h-10 rounded-full object-cover ring-blue-200"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-100 ring-blue-200 flex items-center justify-center text-blue-600 text-xs font-bold">
+                  {doctorName
+                    ? doctorName
+                        .trim()
+                        .split(/\s+/)
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()
+                    : "Dr"}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-bold text-slate-800">{doctorName}</p>
+                {doctorDate && (
+                  <p className="text-xs text-slate-400">{doctorDate}</p>
+                )}
+              </div>
+            </div>
 
             {/* Meta info */}
             <div className="flex flex-col gap-1.5 text-sm text-slate-600">
@@ -415,14 +537,14 @@ const handleProfileClick = () => {
             </div>
 
             {/* Cell Distribution */}
-            <div className="rounded-lg overflow-hidden border border-blue-100 shadow-sm">
+            <div className="rounded-lg overflow-hidden border border-blue-100 shadow-sm flex-1 flex flex-col">
               <div className="px-4 py-2 bg-blue-500">
                 <p className="text-white text-sm font-bold">
                   Prediction Results
                 </p>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 flex-1 flex flex-col justify-center">
                 {distribution.length === 0 ? (
                   <p className="text-slate-400 text-xs">No distribution data</p>
                 ) : (
@@ -438,13 +560,18 @@ const handleProfileClick = () => {
                             {cell.label}
                           </span>
                         </div>
-                        <span className="text-xs font-medium text-gray-800">
-                          {Number(cell.percent).toFixed(1)}%
+                        <span className="text-xs">
+                          <span className="font-semibold text-gray-500">
+                            {cell.count}
+                          </span>{" "}
+                          <span className="font-normal text-gray-400">
+                            ({cell.percent.toFixed(1)}%)
+                          </span>
                         </span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
                         <div
-                          className="h-1 rounded-full transition-all duration-700"
+                          className="h-1.5 rounded-full transition-all duration-700"
                           style={{
                             width: `${cell.percent}%`,
                             background: cell.color,
@@ -457,7 +584,7 @@ const handleProfileClick = () => {
               </div>
 
               {/* Total */}
-              <div className="mx-4 mb-4 mt-2 flex items-center justify-between pt-2 border-t border-gray-200">
+              <div className="mx-4 mb-4 mt-auto flex items-center justify-between pt-2 border-t border-gray-200">
                 <span className="text-sm text-gray-500">Total cells</span>
                 <span className="text-sm font-medium text-gray-700">
                   {total}
