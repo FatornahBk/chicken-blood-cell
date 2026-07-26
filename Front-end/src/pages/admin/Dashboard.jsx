@@ -106,10 +106,7 @@ function PredictionStatusChart({ completed, pending }) {
         className="absolute z-20 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xl border border-emerald-100 bg-white/95 px-3 py-2 text-center text-sm font-semibold text-emerald-600 backdrop-blur transition-all duration-500"
         style={completedLabelPosition}
       >
-        <p className="flex items-center justify-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Completed
-        </p>
+        <p>Completed</p>
         <p className="mt-0.5 text-base font-bold">
           {formatPercent(completedPercent)}%
         </p>
@@ -129,10 +126,7 @@ function PredictionStatusChart({ completed, pending }) {
         className="absolute z-20 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xl border border-orange-100 bg-white/95 px-3 py-2 text-center text-sm font-semibold text-orange-600 backdrop-blur transition-all duration-500"
         style={pendingLabelPosition}
       >
-        <p className="flex items-center justify-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-orange-500" />
-          Pending
-        </p>
+        <p>Pending</p>
         <p className="mt-0.5 text-base font-bold">
           {formatPercent(pendingPercent)}%
         </p>
