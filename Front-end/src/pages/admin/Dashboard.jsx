@@ -4,7 +4,7 @@ import {
   Activity,
   ArrowRight,
   Clock3,
-  Database,
+  Hourglass,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -30,61 +30,106 @@ const statCards = [
     "bg-amber-50",
   ],
   [
-    "Prediction Jobs",
-    "predictionJobs",
+    "Completed Predictions",
+    "completedPredictions",
     Activity,
     "text-emerald-600",
     "bg-emerald-50",
   ],
   [
-    "Dataset Images",
-    "datasetImages",
-    Database,
-    "text-violet-600",
-    "bg-violet-50",
+    "Pending Prediction",
+    "pendingPredictions",
+    Hourglass,
+    "text-orange-600",
+    "bg-orange-50",
   ],
 ];
 
-function PredictionStatusChart({ completed, pending }) {
-  const completedPercent = Math.min(Math.max(Number(completed) || 0, 0), 100);
-  const pendingPercent = Math.min(
-    Math.max(Number(pending) || 0, 0),
-    100 - completedPercent,
+const numberFrom = (...values) => {
+  const value = values.find(
+    (item) => item !== undefined && item !== null && item !== "",
   );
-  const totalPercent = completedPercent + pendingPercent;
-  const completedShare =
-    totalPercent > 0 ? (completedPercent / totalPercent) * 100 : 0;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const optionalNumberFrom = (...values) => {
+  const value = values.find(
+    (item) => item !== undefined && item !== null && item !== "",
+  );
+  if (value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+function PredictionStatusChart({ completed, pending }) {
+  const completedValue = Math.max(numberFrom(completed), 0);
+  const pendingValue = Math.max(numberFrom(pending), 0);
+  const total = completedValue + pendingValue;
+  const completedPercent = total > 0 ? (completedValue / total) * 100 : 0;
+  const pendingPercent = total > 0 ? (pendingValue / total) * 100 : 0;
+  const formatPercent = (value) =>
+    Number.isInteger(value) ? value : value.toFixed(1);
+  const labelPosition = (percent) => {
+    const angle = (percent / 100) * Math.PI * 2;
+    const radius = 50;
+
+    return {
+      left: `${50 + Math.sin(angle) * radius}%`,
+      top: `${50 - Math.cos(angle) * radius}%`,
+    };
+  };
+  const completedLabelPosition = labelPosition(
+    total > 0 ? pendingPercent + completedPercent / 2 : 75,
+  );
+  const pendingLabelPosition = labelPosition(
+    total > 0 ? pendingPercent / 2 : 25,
+  );
   const chartBackground =
-    totalPercent > 0
-      ? `conic-gradient(
-          #4ade80 0% ${completedShare}%,
-          #fb923c ${completedShare}% 100%
-        )`
-      : "#e2e8f0";
+    total === 0
+      ? "#e2e8f0"
+      : completedValue === 0
+        ? "#fb923c"
+        : pendingValue === 0
+          ? "#4ade80"
+          : `conic-gradient(
+          #fb923c 0% ${pendingPercent}%,
+          #4ade80 ${pendingPercent}% 100%
+        )`;
 
   return (
     <div
-      className="mt-6 grid min-h-64 grid-cols-[minmax(4.75rem,0.7fr)_minmax(9rem,1.5fr)_minmax(4.75rem,0.7fr)] items-center gap-2 sm:gap-4"
+      className="relative mx-auto mt-8 aspect-square w-full max-w-80"
       aria-label={`Prediction status: completed ${completedPercent} percent, pending ${pendingPercent} percent`}
     >
-      <div className="text-center text-sm font-semibold text-slate-700">
+      <div
+        className="absolute z-20 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xl border border-emerald-100 bg-white/95 px-3 py-2 text-center text-sm font-semibold text-emerald-600 backdrop-blur transition-all duration-500"
+        style={completedLabelPosition}
+      >
         <p>Completed</p>
-        <p>{completedPercent}%</p>
+        <p className="mt-0.5 text-base font-bold">
+          {formatPercent(completedPercent)}%
+        </p>
       </div>
 
       <div
-        className="relative mx-auto aspect-square w-full max-w-64 rounded-full"
+        className="absolute inset-[18%] rounded-full border-[6px] border-white transition-all duration-500"
         style={{
           background: chartBackground,
         }}
         role="img"
       >
-        <div className="absolute inset-[26%] rounded-full bg-white" />
+        <div className="absolute inset-[27%] rounded-full border border-slate-100 bg-white" />
       </div>
 
-      <div className="self-start pt-10 text-center text-sm font-semibold text-slate-700 sm:pt-8">
+      <div
+        className="absolute z-20 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xl border border-orange-100 bg-white/95 px-3 py-2 text-center text-sm font-semibold text-orange-600 backdrop-blur transition-all duration-500"
+        style={pendingLabelPosition}
+      >
         <p>Pending</p>
-        <p>{pendingPercent}%</p>
+        <p className="mt-0.5 text-base font-bold">
+          {formatPercent(pendingPercent)}%
+        </p>
       </div>
     </div>
   );
@@ -94,8 +139,8 @@ function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingVerification: 0,
-    predictionJobs: 0,
-    datasetImages: 0,
+    completedPredictions: 0,
+    pendingPredictions: 0,
   });
   const [predictionStatuses, setPredictionStatuses] = useState({
     completed: 0,
@@ -110,19 +155,83 @@ function AdminDashboard() {
     (async () => {
       try {
         const data = await getDashboardUsers({ page: 1, limit: 3 });
+        const userStatistics = data.user_statistics ?? {};
+        const predictionStatistics = data.prediction_statistics ?? {};
+        const predictionStatus = data.prediction_status ?? {};
+        const bloodInsights = data.avian_blood_insights ?? {};
         const pendingUsers = data.pending_users_table?.data ?? [];
+        const completedPercent = optionalNumberFrom(
+          predictionStatus.completed_percentage,
+          predictionStatistics.completed_percentage,
+        );
+        const pendingPercent = optionalNumberFrom(
+          predictionStatus.pending_percentage,
+          predictionStatistics.pending_percentage,
+        );
+        const directBatchTotal =
+          data.completed_batches !== undefined ||
+          data.pending_batches !== undefined
+            ? numberFrom(data.completed_batches) +
+              numberFrom(data.pending_batches)
+            : null;
+        const totalDatasets = numberFrom(
+          directBatchTotal,
+          bloodInsights.total_batches,
+          data.total_datasets,
+          data.prediction_jobs,
+        );
+        const completedCount = optionalNumberFrom(
+          data.completed_batches,
+          data.completed_predictions,
+          data.completed_prediction_jobs,
+          predictionStatistics.completed,
+          predictionStatistics.completed_count,
+          predictionStatistics.completed_predictions,
+          predictionStatus.completed,
+          predictionStatus.completed_count,
+        );
+        const pendingCount = optionalNumberFrom(
+          data.pending_batches,
+          data.pending_datasets,
+          data.pending_prediction_jobs,
+          predictionStatistics.pending,
+          predictionStatistics.pending_count,
+          predictionStatistics.pending_datasets,
+          predictionStatus.pending,
+          predictionStatus.pending_count,
+        );
+        const completedPredictions =
+          completedCount ??
+          (completedPercent === null
+            ? 0
+            : Math.round((totalDatasets * completedPercent) / 100));
+        const pendingPredictions =
+          pendingCount ??
+          (pendingPercent === null
+            ? 0
+            : Math.round((totalDatasets * pendingPercent) / 100));
         if (!mounted) return;
         setStats({
-          totalUsers: Number(data.total_users ?? 0),
-          pendingVerification: Number(data.pending_verification ?? 0),
-          predictionJobs: Number(data.prediction_jobs ?? 0),
-          datasetImages: Number(data.dataset_images ?? 0),
+          totalUsers: numberFrom(data.total_users, userStatistics.total_users),
+          pendingVerification: numberFrom(
+            data.pending_verification,
+            userStatistics.unverified_users,
+            data.pending_users_table?.meta?.total_items,
+          ),
+          completedPredictions,
+          pendingPredictions,
         });
         setPredictionStatuses({
-          completed: Number(
-            data.prediction_status?.completed_percentage ?? 0,
+          completed: numberFrom(
+            completedPercent,
+            completedPredictions,
+            bloodInsights.completed_batches,
           ),
-          pending: Number(data.prediction_status?.pending_percentage ?? 0),
+          pending: numberFrom(
+            pendingPercent,
+            pendingPredictions,
+            bloodInsights.pending_batches,
+          ),
         });
         setQueue(
           pendingUsers
@@ -267,7 +376,7 @@ function AdminDashboard() {
             </table>
           </div>
         </section>
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 pb-12 sm:p-6 sm:pb-14">
           <h2 className="text-lg font-bold text-slate-950">
             Prediction Status
           </h2>
