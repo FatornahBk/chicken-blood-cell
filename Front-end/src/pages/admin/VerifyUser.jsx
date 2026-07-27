@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
+import {
   approveUser,
   getPendingUsers,
   rejectUser,
@@ -170,19 +174,27 @@ function VerifyUser() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Pending</p>
           <p className="mt-3 text-3xl font-bold text-amber-600">
-            {summary.pending}
+            {loading ? <SkeletonValue className="mt-0" /> : summary.pending}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Approved Total</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {summary.approvedTotal}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              summary.approvedTotal
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Rejected Total</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {summary.rejectedTotal}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              summary.rejectedTotal
+            )}
           </p>
         </article>
       </div>
@@ -233,16 +245,7 @@ function VerifyUser() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-10 text-center text-slate-500"
-                  >
-                    กำลังโหลดข้อมูล...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableSkeletonRows columns={6} />}
 
               {!loading && error && (
                 <tr>

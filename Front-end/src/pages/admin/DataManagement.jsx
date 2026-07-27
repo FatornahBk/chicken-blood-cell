@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Ban, Database, Eye, LoaderCircle, Search } from "lucide-react";
 import Pagination from "../../components/Pagination";
+import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
 import BloodCellDetailModal from "../../components/BloodCellDetailModal";
 import { getImageUrl } from "../../services/api";
 import {
@@ -312,7 +316,11 @@ function AdminDataManagement() {
           >
             <p className="text-lg font-medium text-slate-500">{label}</p>
             <p className={`mt-3 text-3xl font-bold ${color}`}>
-              {Number(value || 0).toLocaleString()}
+              {loading ? (
+                <SkeletonValue className="mt-0" />
+              ) : (
+                Number(value || 0).toLocaleString()
+              )}
             </p>
           </article>
         ))}
@@ -352,17 +360,7 @@ function AdminDataManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-12 text-center text-slate-500"
-                  >
-                    <LoaderCircle className="mx-auto mb-2 h-6 w-6 animate-spin text-blue-600" />
-                    Loading datasets...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableSkeletonRows columns={6} />}
               {!loading && datasets.length === 0 && (
                 <tr>
                   <td

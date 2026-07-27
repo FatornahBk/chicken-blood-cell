@@ -7,6 +7,10 @@ import {
   Users,
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
+import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
 import { getImageUrl } from "../../services/api";
 import {
   activateUser,
@@ -264,19 +268,19 @@ function AdminUserManagement() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Total Users</p>
           <p className="mt-3 text-3xl font-bold text-slate-950">
-            {summary.total}
+            {loading ? <SkeletonValue className="mt-0" /> : summary.total}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Active Accounts</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {summary.active}
+            {loading ? <SkeletonValue className="mt-0" /> : summary.active}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Suspended</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {summary.suspended}
+            {loading ? <SkeletonValue className="mt-0" /> : summary.suspended}
           </p>
         </article>
       </div>
@@ -340,16 +344,7 @@ function AdminUserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-10 text-center text-slate-500"
-                  >
-                    กำลังโหลดข้อมูล...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableSkeletonRows columns={7} />}
 
               {!loading && error && (
                 <tr>
