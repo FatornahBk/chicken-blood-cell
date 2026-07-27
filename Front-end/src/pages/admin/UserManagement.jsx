@@ -7,6 +7,7 @@ import {
   Users,
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
+import { getImageUrl } from "../../services/api";
 import {
   activateUser,
   getAllUsers,
@@ -389,7 +390,7 @@ function AdminUserManagement() {
                       <td className="px-6 py-4">
                         {user.profile_image ? (
                           <img
-                            src={user.profile_image}
+                            src={getImageUrl(user.profile_image)}
                             alt={fullName}
                             className="h-8 w-8 rounded-full object-cover"
                           />
