@@ -133,11 +133,12 @@ const Prediction = () => {
   // ดึงข้อมูล Batch จาก API ตามประเภทการย้อมสีและหน้าปัจจุบัน
   useEffect(() => {
     const fetchBatches = async () => {
-      try {
-        setLoading(true);
+      setLoading(true);
         setBatches([]);
         
-        const minLoadingTime = new Promise((resolve) => setTimeout(resolve, 300));
+        const minLoadingTime = new Promise((resolve) => setTimeout(resolve, 500));
+      try {
+        
         
         const apiCall = getPendingBatches(activeTab, currentPage, {
           smear_id: debouncedQuery || undefined,
@@ -157,6 +158,7 @@ const Prediction = () => {
         setBatches(result.data);
         setTotalPages(result.meta.total_pages);
       } catch (err) {
+        await minLoadingTime;
         if (err.response && err.response.status === 404) {
           setBatches([]);
           setTotalPages(1);
@@ -256,7 +258,6 @@ const Prediction = () => {
                 <button
                   key={tab.key}
                   onClick={() => {
-                    setBatches([]);
                     setActiveTab(tab.key);
                     setCurrentPage(1);
                   }}
