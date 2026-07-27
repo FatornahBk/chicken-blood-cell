@@ -125,7 +125,7 @@ function AdminUserManagement() {
         setApiSummary(normalizeSummary(data));
         setMeta((current) => ({ ...current, ...data?.meta }));
       } catch (err) {
-        setError(err.response?.data?.message ?? "ไม่สามารถดึงข้อมูลผู้ใช้ได้");
+        setError(err.response?.data?.message ?? "Unable to retrieve user data");
       } finally {
         setLoading(false);
       }
@@ -179,7 +179,7 @@ function AdminUserManagement() {
       await updateUserRole(userId, role);
       await loadUsers();
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถแก้ไข Role ได้");
+      setError(err.response?.data?.message ?? "Unable to update the role");
     } finally {
       setActionUserId(null);
       setConfirmAction(null);
@@ -194,7 +194,7 @@ function AdminUserManagement() {
       await suspendUser(user.user_id, reason.trim());
       await loadUsers();
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถระงับบัญชีผู้ใช้ได้");
+      setError(err.response?.data?.message ?? "Unable to suspend the user account");
     } finally {
       setActionUserId(null);
       setConfirmAction(null);
@@ -209,7 +209,7 @@ function AdminUserManagement() {
       await activateUser(user.user_id);
       await loadUsers();
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถเปิดใช้งานบัญชีได้");
+      setError(err.response?.data?.message ?? "Unable to activate the account");
     } finally {
       setActionUserId(null);
       setConfirmAction(null);
@@ -376,7 +376,7 @@ function AdminUserManagement() {
                     colSpan="7"
                     className="px-6 py-10 text-center text-slate-500"
                   >
-                    ไม่พบข้อมูลผู้ใช้
+                    No user records found
                   </td>
                 </tr>
               )}

@@ -247,7 +247,7 @@ function AdminDashboard() {
       } catch (err) {
         if (mounted)
           setError(
-            err.response?.data?.message ?? "ไม่สามารถดึงข้อมูล Dashboard ได้",
+            err.response?.data?.message ?? "Unable to retrieve dashboard data",
           );
       } finally {
         if (mounted) setLoading(false);
@@ -339,7 +339,7 @@ function AdminDashboard() {
                       colSpan="4"
                       className="px-4 py-10 text-center text-slate-500"
                     >
-                      ไม่มีผู้ใช้ที่รออนุมัติ
+                      No users are awaiting approval
                     </td>
                   </tr>
                 )}

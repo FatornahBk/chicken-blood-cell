@@ -237,7 +237,7 @@ function AdminDataManagement() {
       setStatistics({ ...emptyStatistics, ...data?.statistics });
       setMeta((current) => ({ ...current, ...data?.meta }));
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถดึงข้อมูลชุดข้อมูลได้");
+      setError(err.response?.data?.message ?? "Unable to retrieve dataset data");
       setDatasets([]);
     } finally {
       setLoading(false);
@@ -255,7 +255,7 @@ function AdminDataManagement() {
 
     const id = getId(item);
     if (id === undefined || id === null) {
-      setError("ไม่พบ ID ของชุดข้อมูล");
+      setError("Dataset ID not found");
       return;
     }
 
@@ -269,7 +269,7 @@ function AdminDataManagement() {
         await loadDatasets();
       }
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถระงับชุดข้อมูลได้");
+      setError(err.response?.data?.message ?? "Unable to suspend the dataset");
     } finally {
       setSuspendingId(null);
       setSuspendCandidate(null);
@@ -368,7 +368,7 @@ function AdminDataManagement() {
                     colSpan="6"
                     className="px-6 py-12 text-center text-slate-500"
                   >
-                    ไม่พบข้อมูล dataset
+                    No dataset records found
                   </td>
                 </tr>
               )}

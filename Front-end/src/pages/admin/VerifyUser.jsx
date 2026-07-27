@@ -81,7 +81,7 @@ function VerifyUser() {
     } catch (err) {
       setError(
         err.response?.data?.message ??
-          "ไม่สามารถดึงข้อมูลผู้ใช้ที่รออนุมัติได้",
+          "Unable to retrieve users awaiting approval",
       );
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ function VerifyUser() {
 
       await loadPendingUsers();
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถอัปเดตสถานะผู้ใช้ได้");
+      setError(err.response?.data?.message ?? "Unable to update user status");
     } finally {
       setActionUserId(null);
       setConfirmAction(null);
@@ -269,7 +269,7 @@ function VerifyUser() {
                     colSpan="6"
                     className="px-6 py-10 text-center text-slate-500"
                   >
-                    ไม่มีผู้ใช้ที่รออนุมัติ
+                    No users are awaiting approval
                   </td>
                 </tr>
               )}
