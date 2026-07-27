@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Ban,
-  Database,
-  Eye,
-  LoaderCircle,
-  Search,
-} from "lucide-react";
+import { Ban, Database, Eye, LoaderCircle, Search } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import BloodCellDetailModal from "../../components/BloodCellDetailModal";
 import { getImageUrl } from "../../services/api";
@@ -63,10 +57,10 @@ const getStatus = (item) =>
       )
       ? "completed"
       : item.images.some((image) =>
-          ["processing", "in_progress"].includes(
-            String(image.image_status ?? image.status).toLowerCase(),
-          ),
-        )
+            ["processing", "in_progress"].includes(
+              String(image.image_status ?? image.status).toLowerCase(),
+            ),
+          )
         ? "processing"
         : "pending"
     : "pending");
@@ -150,7 +144,8 @@ const normalizePrediction = (prediction) => {
 const toModalData = (item) => {
   const images = Array.isArray(item.images) ? item.images : [];
   const user = item.user ?? item.owner ?? {};
-  const uploaderName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
+  const uploaderName =
+    `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
 
   return {
     id: getId(item),
@@ -170,9 +165,7 @@ const toModalData = (item) => {
     stainType: getStain(item),
     predictedAt: item.predicted_at ?? item.created_at ?? "",
     uploaderName: uploaderName || getEmail(item),
-    uploaderAvatar: user.profile_image
-      ? getImageUrl(user.profile_image)
-      : null,
+    uploaderAvatar: user.profile_image ? getImageUrl(user.profile_image) : null,
     uploaderId: user.user_id ?? user.id ?? null,
   };
 };
@@ -298,7 +291,10 @@ function AdminDataManagement() {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div
+          role="alert"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+        >
           {error}
         </div>
       )}
@@ -306,11 +302,14 @@ function AdminDataManagement() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Total Images", statistics.total_images, "text-slate-950"],
-          ["Datasets", statistics.total_batches, "text-blue-600"],
-          ["Wright Stain", statistics.total_wright, "text-amber-600"],
+          ["Datasets", statistics.total_batches, "text-cyan-600"],
+          ["Wright Stain", statistics.total_wright, "text-blue-600"],
           ["Giemsa Stain", statistics.total_giemsa, "text-violet-600"],
         ].map(([label, value, color]) => (
-          <article key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <article
+            key={label}
+            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <p className="text-lg font-medium text-slate-500">{label}</p>
             <p className={`mt-3 text-3xl font-bold ${color}`}>
               {Number(value || 0).toLocaleString()}
@@ -355,7 +354,10 @@ function AdminDataManagement() {
             <tbody className="divide-y divide-slate-100">
               {loading && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan="6"
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     <LoaderCircle className="mx-auto mb-2 h-6 w-6 animate-spin text-blue-600" />
                     Loading datasets...
                   </td>
@@ -363,60 +365,81 @@ function AdminDataManagement() {
               )}
               {!loading && datasets.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                  <td
+                    colSpan="6"
+                    className="px-6 py-12 text-center text-slate-500"
+                  >
                     ไม่พบข้อมูล dataset
                   </td>
                 </tr>
               )}
-              {!loading && datasets.map((item, index) => {
-                const id = getId(item);
-                const status = getStatus(item);
-                const isSuspended = ["suspend", "suspended"].includes(
-                  String(status).toLowerCase(),
-                );
-                return (
-                  <tr key={id ?? `${getName(item)}-${index}`} className="hover:bg-slate-50/70">
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-slate-950">{getName(item)}</p>
-                      <p className="text-slate-500">{getEmail(item)}</p>
-                    </td>
-                    <td className="px-6 py-4 capitalize text-slate-700">{getStain(item)}</td>
-                    <td className="px-6 py-4 font-medium text-slate-800">
-                      {Number(getImageCount(item) || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyle(status)}`}>
-                        {status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-500">{formatAdminDate(getCreatedAt(item))}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDataset(toModalData(item))}
-                          disabled={id === undefined || id === null}
-                          className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
-                          aria-label={`View ${getName(item)}`}
+              {!loading &&
+                datasets.map((item, index) => {
+                  const id = getId(item);
+                  const status = getStatus(item);
+                  const isSuspended = ["suspend", "suspended"].includes(
+                    String(status).toLowerCase(),
+                  );
+                  return (
+                    <tr
+                      key={id ?? `${getName(item)}-${index}`}
+                      className="hover:bg-slate-50/70"
+                    >
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-slate-950">
+                          {getName(item)}
+                        </p>
+                        <p className="text-slate-500">{getEmail(item)}</p>
+                      </td>
+                      <td className="px-6 py-4 capitalize text-slate-700">
+                        {getStain(item)}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-800">
+                        {Number(getImageCount(item) || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyle(status)}`}
                         >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        {!isSuspended && (
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500">
+                        {formatAdminDate(getCreatedAt(item))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setSuspendCandidate(item)}
-                            disabled={suspendingId === id}
-                            className="rounded-lg border border-rose-200 p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
-                            aria-label={`Suspend ${getName(item)}`}
+                            onClick={() =>
+                              setSelectedDataset(toModalData(item))
+                            }
+                            disabled={id === undefined || id === null}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`View ${getName(item)}`}
                           >
-                            {suspendingId === id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                            <Eye className="h-4 w-4" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          {!isSuspended && (
+                            <button
+                              type="button"
+                              onClick={() => setSuspendCandidate(item)}
+                              disabled={suspendingId === id}
+                              className="rounded-lg border border-rose-200 p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
+                              aria-label={`Suspend ${getName(item)}`}
+                            >
+                              {suspendingId === id ? (
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
