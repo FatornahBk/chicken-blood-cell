@@ -483,6 +483,7 @@ const SearchBar = ({
   showDateSort = true,
   placeholder,
   onSearch,
+  onChange,
   onFilterProvince,
   onFilterChickenType,
   onSortChange,
@@ -578,7 +579,12 @@ const SearchBar = ({
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={
+              (e) => {
+                setQuery(e.target.value); 
+                onChange?.(e.target.value);
+              }
+            }
             onKeyDown={handleKeyDown}
             placeholder={resolvedPlaceholder}
             className="flex-1 px-3 py-2.5 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent"
