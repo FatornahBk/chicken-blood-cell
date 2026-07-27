@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Ban,
   Database,
   Eye,
   LoaderCircle,
   Search,
-  Trash2,
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import BloodCellDetailModal from "../../components/BloodCellDetailModal";
 import { getImageUrl } from "../../services/api";
 import {
-  deleteDatasetById,
   getAllDatasets,
   getDatasetById,
+  suspendDatasetById,
 } from "../../services/admin/DataManagement";
 import { formatAdminDate } from "../../utils/adminDate";
 
@@ -76,6 +76,10 @@ const getCreatedAt = (item) =>
 
 const statusStyle = (status) => {
   const normalized = String(status).toLowerCase();
+  if (["suspend", "suspended"].includes(normalized)) {
+    return "bg-red-100 text-red-600";
+  }
+
   return ["complete", "completed", "predicted", "success"].includes(normalized)
     ? "bg-emerald-50 text-emerald-700"
     : "bg-amber-50 text-amber-700";
@@ -186,9 +190,9 @@ function AdminDataManagement() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingId, setDeletingId] = useState(null);
+  const [suspendingId, setSuspendingId] = useState(null);
   const [selectedDataset, setSelectedDataset] = useState(null);
-  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [suspendCandidate, setSuspendCandidate] = useState(null);
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
@@ -247,8 +251,8 @@ function AdminDataManagement() {
     return () => window.clearTimeout(timeoutId);
   }, [loadDatasets]);
 
-  const handleDelete = async () => {
-    const item = deleteCandidate;
+  const handleSuspend = async () => {
+    const item = suspendCandidate;
     if (!item) return;
 
     const id = getId(item);
@@ -257,26 +261,26 @@ function AdminDataManagement() {
       return;
     }
 
-    setDeletingId(id);
+    setSuspendingId(id);
     setError("");
     try {
-      await deleteDatasetById(id);
+      await suspendDatasetById(id);
       if (datasets.length === 1 && page > 1) {
         setPage((current) => current - 1);
       } else {
         await loadDatasets();
       }
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถลบชุดข้อมูลได้");
+      setError(err.response?.data?.message ?? "ไม่สามารถระงับชุดข้อมูลได้");
     } finally {
-      setDeletingId(null);
-      setDeleteCandidate(null);
+      setSuspendingId(null);
+      setSuspendCandidate(null);
     }
   };
 
-  const closeDeleteModal = () => {
-    if (deletingId !== null) return;
-    setDeleteCandidate(null);
+  const closeSuspendModal = () => {
+    if (suspendingId !== null) return;
+    setSuspendCandidate(null);
   };
 
   const totalPages = Number(meta.total_pages) || 0;
@@ -367,6 +371,9 @@ function AdminDataManagement() {
               {!loading && datasets.map((item, index) => {
                 const id = getId(item);
                 const status = getStatus(item);
+                const isSuspended = ["suspend", "suspended"].includes(
+                  String(status).toLowerCase(),
+                );
                 return (
                   <tr key={id ?? `${getName(item)}-${index}`} className="hover:bg-slate-50/70">
                     <td className="px-6 py-4">
@@ -394,15 +401,17 @@ function AdminDataManagement() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteCandidate(item)}
-                          disabled={deletingId === id}
-                          className="rounded-lg border border-rose-200 p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
-                          aria-label={`Delete ${getName(item)}`}
-                        >
-                          {deletingId === id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </button>
+                        {!isSuspended && (
+                          <button
+                            type="button"
+                            onClick={() => setSuspendCandidate(item)}
+                            disabled={suspendingId === id}
+                            className="rounded-lg border border-rose-200 p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
+                            aria-label={`Suspend ${getName(item)}`}
+                          >
+                            {suspendingId === id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -430,41 +439,41 @@ function AdminDataManagement() {
         />
       )}
 
-      {deleteCandidate && (
+      {suspendCandidate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
           role="presentation"
-          onMouseDown={closeDeleteModal}
+          onMouseDown={closeSuspendModal}
         >
           <div
             className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="dataset-delete-confirm-title"
+            aria-labelledby="dataset-suspend-confirm-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
-                <Trash2 className="h-5 w-5" />
+                <Ban className="h-5 w-5" />
               </div>
               <h3
-                id="dataset-delete-confirm-title"
+                id="dataset-suspend-confirm-title"
                 className="text-lg font-bold text-slate-950"
               >
-                Confirm Deletion
+                Confirm Suspension
               </h3>
             </div>
 
             <div className="mt-4">
               <p className="text-sm text-slate-500">
-                Delete this dataset and all of its associated images?
+                Suspend this dataset and prevent it from being used?
               </p>
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="font-semibold text-slate-950">
-                  Smear ID: {getName(deleteCandidate)}
+                  Smear ID: {getName(suspendCandidate)}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  {getEmail(deleteCandidate)}
+                  {getEmail(suspendCandidate)}
                 </p>
               </div>
             </div>
@@ -472,21 +481,21 @@ function AdminDataManagement() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={closeDeleteModal}
-                disabled={deletingId === getId(deleteCandidate)}
+                onClick={closeSuspendModal}
+                disabled={suspendingId === getId(suspendCandidate)}
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
-                disabled={deletingId === getId(deleteCandidate)}
+                onClick={handleSuspend}
+                disabled={suspendingId === getId(suspendCandidate)}
                 className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-600 focus:outline-none focus:ring-4 focus:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {deletingId === getId(deleteCandidate)
+                {suspendingId === getId(suspendCandidate)
                   ? "Processing..."
-                  : "Confirm"}
+                  : "Suspend"}
               </button>
             </div>
           </div>
