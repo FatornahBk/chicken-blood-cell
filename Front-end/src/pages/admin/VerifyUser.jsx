@@ -334,16 +334,17 @@ function VerifyUser() {
             </tbody>
           </table>
         </div>
-        {!loading && !error && (
-          <div className="flex justify-center border-t border-slate-100 px-6 py-4">
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      {!loading && !error && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {confirmAction && (
         <div

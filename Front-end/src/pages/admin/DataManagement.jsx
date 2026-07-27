@@ -444,16 +444,17 @@ function AdminDataManagement() {
           </table>
         </div>
 
-        {!loading && Number(meta.total_items) > 0 && (
-          <div className="flex justify-center border-t border-slate-100 px-6 py-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={Math.max(totalPages, 1)}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      {!loading && Number(meta.total_items) > 0 && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.max(totalPages, 1)}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {selectedDataset && (
         <BloodCellDetailModal

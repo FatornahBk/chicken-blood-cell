@@ -471,16 +471,17 @@ function AdminUserManagement() {
           </table>
         </div>
 
-        {!loading && !error && meta.total_pages > 0 && (
-          <div className="flex justify-center border-t border-slate-100 px-6 py-4">
-            <Pagination
-              currentPage={meta.current_page}
-              totalPages={meta.total_pages}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      {!loading && !error && meta.total_pages > 0 && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={meta.current_page}
+            totalPages={meta.total_pages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {confirmAction && (
         <div
