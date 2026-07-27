@@ -8,11 +8,17 @@ import {
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
+import { getImageUrl } from "../../services/api";
+import {
   activateUser,
   getAllUsers,
   suspendUser,
   updateUserRole,
 } from "../../services/admin/UserManagement";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 import { formatAdminDate } from "../../utils/adminDate";
 
 const normalizeUsers = (data) => {
@@ -180,12 +186,12 @@ function AdminUserManagement() {
     }
   };
 
-  const handleSuspendUser = async (user) => {
+  const handleSuspendUser = async (user, reason) => {
     setError("");
     setActionUserId(user.user_id);
 
     try {
-      await suspendUser(user.user_id);
+      await suspendUser(user.user_id, reason.trim());
       await loadUsers();
     } catch (err) {
       setError(err.response?.data?.message ?? "ไม่สามารถระงับบัญชีผู้ใช้ได้");
@@ -220,7 +226,7 @@ function AdminUserManagement() {
   };
 
   const openSuspendModal = (user) => {
-    setConfirmAction({ type: "suspend", user });
+    setConfirmAction({ type: "suspend", user, reason: "" });
   };
 
   const openActivateModal = (user) => {
@@ -263,19 +269,31 @@ function AdminUserManagement() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Total Users</p>
           <p className="mt-3 text-3xl font-bold text-slate-950">
-            {summary.total}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.total)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Active Accounts</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {summary.active}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.active)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Suspended</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {summary.suspended}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.suspended)
+            )}
           </p>
         </article>
       </div>
@@ -339,16 +357,7 @@ function AdminUserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-10 text-center text-slate-500"
-                  >
-                    กำลังโหลดข้อมูล...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableSkeletonRows columns={7} />}
 
               {!loading && error && (
                 <tr>
@@ -389,7 +398,7 @@ function AdminUserManagement() {
                       <td className="px-6 py-4">
                         {user.profile_image ? (
                           <img
-                            src={user.profile_image}
+                            src={getImageUrl(user.profile_image)}
                             alt={fullName}
                             className="h-8 w-8 rounded-full object-cover"
                           />
@@ -471,16 +480,17 @@ function AdminUserManagement() {
           </table>
         </div>
 
-        {!loading && !error && meta.total_pages > 0 && (
-          <div className="flex justify-center border-t border-slate-100 px-6 py-4">
-            <Pagination
-              currentPage={meta.current_page}
-              totalPages={meta.total_pages}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      {!loading && !error && meta.total_pages > 0 && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={meta.current_page}
+            totalPages={meta.total_pages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {confirmAction && (
         <div
@@ -561,6 +571,31 @@ function AdminUserManagement() {
                   })}
                 </div>
               )}
+
+              {confirmAction.type === "suspend" && (
+                <label className="mt-4 block">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Suspension reason
+                  </span>
+                  <span className="ml-1 text-rose-500" aria-hidden="true">
+                    *
+                  </span>
+                  <textarea
+                    value={confirmAction.reason}
+                    onChange={(event) =>
+                      setConfirmAction((current) => ({
+                        ...current,
+                        reason: event.target.value,
+                      }))
+                    }
+                    rows="3"
+                    required
+                    disabled={actionUserId === confirmAction.user.user_id}
+                    placeholder="Enter the reason for suspending this account"
+                    className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-50"
+                  />
+                </label>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
@@ -582,9 +617,16 @@ function AdminUserManagement() {
                       )
                     : confirmAction.type === "activate"
                       ? handleActivateUser(confirmAction.user)
-                    : handleSuspendUser(confirmAction.user)
+                    : handleSuspendUser(
+                        confirmAction.user,
+                        confirmAction.reason,
+                      )
                 }
-                disabled={actionUserId === confirmAction.user.user_id}
+                disabled={
+                  actionUserId === confirmAction.user.user_id ||
+                  (confirmAction.type === "suspend" &&
+                    !confirmAction.reason.trim())
+                }
                 className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${confirmButtonClass}`}
               >
                 {actionUserId === confirmAction.user.user_id

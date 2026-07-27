@@ -50,9 +50,10 @@ export const getDatasetById = async (datasetId) => {
   return response.data;
 };
 
-export const deleteDatasetById = async (datasetId) => {
-  const response = await loginClient.delete(
-    `/data/admin/delete/${encodeURIComponent(datasetId)}`,
+export const suspendDatasetById = async (datasetId) => {
+  const response = await loginClient.patch(
+    `/data/admin/suspend/${encodeURIComponent(datasetId)}`,
+    {},
     authConfig(),
   );
 
