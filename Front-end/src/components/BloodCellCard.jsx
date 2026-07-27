@@ -26,6 +26,8 @@ const BloodCellCard = ({
   avatarUrl = null,
   onClick = null,
   onDelete = null,
+  onDeletePrediction = null,
+  hasPrediction = false,
   className = "",
 }) => {
   const navigate = useNavigate();
@@ -41,6 +43,7 @@ const BloodCellCard = ({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmType, setConfirmType] = useState(null); 
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -62,18 +65,32 @@ const BloodCellCard = ({
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     setMenuOpen(false);
+    setConfirmType("post");
+    setConfirmOpen(true);
+  };
+
+  const handleDeletePredictionClick = (e) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    setConfirmType("prediction");
     setConfirmOpen(true);
   };
 
   const handleConfirmDelete = (e) => {
     e.stopPropagation();
     setConfirmOpen(false);
-    if (onDelete) onDelete(issueId);
+    if (confirmType === "prediction") {
+      if (onDeletePrediction) onDeletePrediction(issueId);
+    } else {
+      if (onDelete) onDelete(issueId);
+    }
+    setConfirmType(null);
   };
 
   const handleCancelDelete = (e) => {
     e.stopPropagation();
     setConfirmOpen(false);
+    setConfirmType(null);
   };
 
   const handleProfileClick = (e) => {
@@ -230,11 +247,19 @@ const BloodCellCard = ({
 
               {menuOpen && (
                 <div
-                  className="absolute right-0 bottom-full mb-1 w-32 bg-white border border-gray-100 rounded-md shadow-lg overflow-hidden z-20"
+                  className="absolute right-0 bottom-full mb-1 w-40 bg-white border border-gray-100 rounded-md shadow-lg overflow-hidden z-20"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  {hasPrediction && onDeletePrediction && (
+                    <button
+                      className="w-full text-left text-xs text-gray-700 hover:bg-red-50 px-3 py-2"
+                      onClick={handleDeletePredictionClick}
+                    >
+                      Delete prediction
+                    </button>
+                  )}
                   <button
-                    className="w-full text-left text-xs text-red-600 hover:bg-red-50 px-3 py-2"
+                    className="w-full text-left text-xs text-gray-700 hover:bg-red-50 px-3 py-2"
                     onClick={handleDeleteClick}
                   >
                     Delete post
@@ -253,11 +278,16 @@ const BloodCellCard = ({
           >
             <div className="bg-white rounded-2xl shadow-xl w-96 p-6">
               <p className="text-base font-semibold text-gray-800 mb-1.5">
-                Are you sure you want to delete this post?
+                {confirmType === "prediction"
+                  ? "Are you sure you want to delete this prediction?"
+                  : "Are you sure you want to delete this post?"}
               </p>
-              <p className="text-sm text-gray-500 mb-6">
-                This action cannot be undone.
+              <p className="text-sm text-gray-500 mb-4">
+                {confirmType === "prediction"
+                  ? "The images will be kept and moved to pending status."
+                  : "This action cannot be undone."}
               </p>
+              <div className="border-t border-gray-200 -mx-6 mb-4" />
               <div className="flex justify-end gap-3">
                 <button
                   className="text-sm font-medium px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100"
@@ -266,7 +296,7 @@ const BloodCellCard = ({
                   Cancel
                 </button>
                 <button
-                  className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                   onClick={handleConfirmDelete}
                 >
                   Confirm

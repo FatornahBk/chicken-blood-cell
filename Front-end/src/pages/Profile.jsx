@@ -204,35 +204,35 @@ function ProfileBanner({ user, onSave, saving }) {
               </div>
 
               <div className="flex gap-6 text-center">
-  <div>
-    <div
-      className="text-xl font-semibold leading-tight"
-      style={{ color: "#6b8ca8" }}
-    >
-      {user.totalCompletedBatches}
-    </div>
-    <div
-      className="text-sm font-medium mt-0.5"
-      style={{ color: "#22a555" }}   // Completed = เขียว
-    >
-      Completed
-    </div>
-  </div>
-  <div>
-    <div
-      className="text-xl font-semibold leading-tight"
-      style={{ color: "#6b8ca8" }}
-    >
-      {user.totalPendingBatches}
-    </div>
-    <div
-      className="text-sm font-medium mt-0.5"
-      style={{ color: "#e8a020" }}   // Pending = ส้ม
-    >
-      Pending
-    </div>
-  </div>
-</div>
+                <div>
+                  <div
+                    className="text-xl font-semibold leading-tight"
+                    style={{ color: "#6b8ca8" }}
+                  >
+                    {user.totalCompletedBatches}
+                  </div>
+                  <div
+                    className="text-sm font-medium mt-0.5"
+                    style={{ color: "#22a555" }} // Completed = เขียว
+                  >
+                    Completed
+                  </div>
+                </div>
+                <div>
+                  <div
+                    className="text-xl font-semibold leading-tight"
+                    style={{ color: "#6b8ca8" }}
+                  >
+                    {user.totalPendingBatches}
+                  </div>
+                  <div
+                    className="text-sm font-medium mt-0.5"
+                    style={{ color: "#e8a020" }} // Pending = ส้ม
+                  >
+                    Pending
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -593,6 +593,32 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeletePrediction = async (batchId) => {
+    try {
+      await uploadClient.delete(`/profile/batches/${batchId}/predictions`);
+
+      // ย้าย batch จาก predicted -> unpredicted (ภาพยังอยู่ แค่เปลี่ยนสถานะ)
+      setPredicted((prev) => {
+        const batch = prev.find((b) => b.batch_id === batchId);
+        if (batch) {
+          setUnpredicted((up) => [{ ...batch, status: "pending" }, ...up]);
+        }
+        return prev.filter((b) => b.batch_id !== batchId);
+      });
+
+      setUser((prev) => ({
+        ...prev,
+        totalCompletedBatches: Math.max(
+          0,
+          (prev.totalCompletedBatches || 0) - 1,
+        ),
+        totalPendingBatches: (prev.totalPendingBatches || 0) + 1,
+      }));
+    } catch (err) {
+      console.error("Failed to delete prediction:", err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
@@ -659,6 +685,10 @@ export default function ProfilePage() {
                     }
                     onClick={(idx) => handleCardClick(batch, idx)}
                     onDelete={() => handleDeleteBatch(batch.batch_id)}
+                    onDeletePrediction={() =>
+                      handleDeletePrediction(batch.batch_id)
+                    }
+                    hasPrediction={true}
                   />
                 ))}
               </div>
@@ -711,6 +741,7 @@ export default function ProfilePage() {
                     }
                     onClick={(idx) => handleCardClick(batch, idx)}
                     onDelete={() => handleDeleteBatch(batch.batch_id)}
+                    hasPrediction={false}
                   />
                 ))}
               </div>

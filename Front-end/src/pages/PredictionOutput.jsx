@@ -906,7 +906,7 @@ export default function PredictionLogsPage() {
           </div>
 
           {/* ── Column 3: Detail panel ── */}
-          <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto">
+          <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             {/* Description card */}
             <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden">
               <div className="flex items-center px-4 py-2 bg-blue-500 rounded-t-lg">
@@ -924,26 +924,26 @@ export default function PredictionLogsPage() {
             </div>
 
             {/* Cell Distribution card */}
-            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex-1 flex flex-col min-h-0">
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex flex-col">
               <div className="flex bg-blue-500 rounded-t-lg overflow-hidden shrink-0">
                 <button
                   onClick={() => setResultTab("perImage")}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${resultTab === "perImage" ? "bg-blue-600 text-white" : "text-blue-100 hover:bg-blue-600/50"}`}
                 >
-                  Per image
+                  Image results
                 </button>
                 <button
                   onClick={() => setResultTab("wholeCase")}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${resultTab === "wholeCase" ? "bg-blue-600 text-white" : "text-blue-100 hover:bg-blue-600/50"}`}
                 >
-                  Whole case
+                  Overall results
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto flex flex-col">
+              <div className="min-h-[310px] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 {resultTab === "perImage" && (
                   <>
-                    <div className="p-4 pt-8">
+                    <div className="p-4 pt-6">
                       {ALL_CLASSES.map((cls) => {
                         const val = cellCounts[cls];
                         const count = val?.count ?? 0;
@@ -960,11 +960,11 @@ export default function PredictionLogsPage() {
                                   className="w-2 h-2 rounded-full shrink-0"
                                   style={{ background: color }}
                                 />
-                                <span className="text-xs text-gray-700">
+                                <span className="text-sm text-gray-700">
                                   {cls}
                                 </span>
                               </div>
-                              <span className="text-xs">
+                              <span className="text-sm">
                                 <span className="font-semibold text-gray-500">
                                   {count}
                                 </span>{" "}
@@ -985,7 +985,7 @@ export default function PredictionLogsPage() {
                     </div>
 
                     {/* Total */}
-                    <div className="mx-4 mb-4 mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="mx-4 mb-2 mt-auto flex items-center justify-between pt-2 border-t border-gray-200">
                       <span className="text-base text-gray-500">
                         Total cells
                       </span>
@@ -998,7 +998,7 @@ export default function PredictionLogsPage() {
 
                 {resultTab === "wholeCase" && (
                   <div>
-                    <div className="px-4 pt-4 pb-4 grid grid-cols-2 gap-2">
+                    <div className="px-4 pt-3 pb-4 grid grid-cols-2 gap-2">
                       <div className="border border-gray-200 rounded-lg py-1 text-center">
                         <p className="text-md font-bold text-gray-800">
                           {caseTotal}
@@ -1012,7 +1012,7 @@ export default function PredictionLogsPage() {
                         <p className="text-xs text-gray-500">Images</p>
                       </div>
                     </div>
-                    <div className="p-4 pt-2">
+                    <div className="p-4 pt-1">
                       {ALL_CLASSES.map((cls) => {
                         const count = caseCellCounts[cls] || 0;
                         const pct =
@@ -1028,11 +1028,11 @@ export default function PredictionLogsPage() {
                                   className="w-2 h-2 rounded-full shrink-0"
                                   style={{ background: color }}
                                 />
-                                <span className="text-xs text-gray-700">
+                                <span className="text-sm text-gray-700">
                                   {cls}
                                 </span>
                               </div>
-                              <span className="text-xs">
+                              <span className="text-sm">
                                 <span className="font-semibold text-gray-500">
                                   {count}
                                 </span>{" "}
