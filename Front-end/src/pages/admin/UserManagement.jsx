@@ -180,12 +180,12 @@ function AdminUserManagement() {
     }
   };
 
-  const handleSuspendUser = async (user) => {
+  const handleSuspendUser = async (user, reason) => {
     setError("");
     setActionUserId(user.user_id);
 
     try {
-      await suspendUser(user.user_id);
+      await suspendUser(user.user_id, reason.trim());
       await loadUsers();
     } catch (err) {
       setError(err.response?.data?.message ?? "ไม่สามารถระงับบัญชีผู้ใช้ได้");
@@ -220,7 +220,7 @@ function AdminUserManagement() {
   };
 
   const openSuspendModal = (user) => {
-    setConfirmAction({ type: "suspend", user });
+    setConfirmAction({ type: "suspend", user, reason: "" });
   };
 
   const openActivateModal = (user) => {
@@ -561,6 +561,31 @@ function AdminUserManagement() {
                   })}
                 </div>
               )}
+
+              {confirmAction.type === "suspend" && (
+                <label className="mt-4 block">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Suspension reason
+                  </span>
+                  <span className="ml-1 text-rose-500" aria-hidden="true">
+                    *
+                  </span>
+                  <textarea
+                    value={confirmAction.reason}
+                    onChange={(event) =>
+                      setConfirmAction((current) => ({
+                        ...current,
+                        reason: event.target.value,
+                      }))
+                    }
+                    rows="3"
+                    required
+                    disabled={actionUserId === confirmAction.user.user_id}
+                    placeholder="Enter the reason for suspending this account"
+                    className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-50"
+                  />
+                </label>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
@@ -582,9 +607,16 @@ function AdminUserManagement() {
                       )
                     : confirmAction.type === "activate"
                       ? handleActivateUser(confirmAction.user)
-                    : handleSuspendUser(confirmAction.user)
+                    : handleSuspendUser(
+                        confirmAction.user,
+                        confirmAction.reason,
+                      )
                 }
-                disabled={actionUserId === confirmAction.user.user_id}
+                disabled={
+                  actionUserId === confirmAction.user.user_id ||
+                  (confirmAction.type === "suspend" &&
+                    !confirmAction.reason.trim())
+                }
                 className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${confirmButtonClass}`}
               >
                 {actionUserId === confirmAction.user.user_id

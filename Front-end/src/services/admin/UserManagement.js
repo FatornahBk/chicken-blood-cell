@@ -45,10 +45,10 @@ export const updateUserRole = async (userId, role) => {
   return response.data;
 };
 
-export const suspendUser = async (userId) => {
+export const suspendUser = async (userId, reason) => {
   const response = await loginClient.patch(
     `/user/admin/suspend/${userId}`,
-    {},
+    { reason },
     authConfig(),
   );
   return response.data;
