@@ -9,11 +9,38 @@ import Searchbar from "../components/SearchBar";
 // แปลง Date object -> string "YYYY-MM-DD" ตามฟอร์แมตที่ backend ต้องการ
 const formatDate = (d) => {
   if (!d) return undefined;
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const dateObj = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(dateObj.getTime())) return undefined;
+
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const dd = String(dateObj.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 };
+
+function SampleCardSkeleton() {
+  return (
+    <div className="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden mb-3 p-3 animate-pulse">
+      <div className="flex items-center gap-6">
+        {/* Skeleton รูปภาพ */}
+        <div className="flex-shrink-0 w-[146px] h-[120px] bg-gray-200 rounded-md" />
+        {/* Skeleton รายละเอียด */}
+        <div className="flex-1 space-y-2 py-1">
+          <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+          <div className="h-3 bg-gray-200 rounded w-1/3" />
+          <div className="h-3 bg-gray-200 rounded w-1/4" />
+          <div className="h-3 bg-gray-200 rounded w-1/3" />
+          <div className="h-3 bg-gray-200 rounded w-1/5" />
+          <div className="h-3 bg-gray-200 rounded w-1/4" />
+        </div>
+        {/* Skeleton ป้ายจำนวนรูป */}
+        <div className="flex-shrink-0">
+          <div className="h-6 w-20 bg-gray-200 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SampleCard({ sample, onClick }) {
   const firstImage = sample.images?.[0];
@@ -80,7 +107,6 @@ function SampleCard({ sample, onClick }) {
 }
 
 const Prediction = () => {
-  // State สำหรับจัดการประเภทการย้อมสี, ข้อมูล Batch และ Pagination
   const [activeTab, setActiveTab] = useState(
     () => sessionStorage.getItem("prediction_active_tab") || "Wright",
   );
@@ -89,6 +115,7 @@ const Prediction = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchChickenType, setSearchChickenType] = useState("Chicken type");
   const [searchDateRange, setSearchDateRange] = useState({
     start: null,
@@ -96,31 +123,54 @@ const Prediction = () => {
   });
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // ดึงข้อมูล Batch จาก API ตามประเภทการย้อมสีและหน้าปัจจุบัน
   useEffect(() => {
     const fetchBatches = async () => {
-      try {
-        setLoading(true);
+      setLoading(true);
         setBatches([]);
-        const result = await getPendingBatches(activeTab, currentPage, {
-          smear_id: searchQuery || undefined,
+        
+        const minLoadingTime = new Promise((resolve) => setTimeout(resolve, 500));
+      try {
+        
+        
+        const apiCall = getPendingBatches(activeTab, currentPage, {
+          smear_id: debouncedQuery || undefined,
           chicken_type:
-            searchChickenType && searchChickenType !== "Chicken type"
+            searchChickenType &&
+            searchChickenType !== "Chicken type" &&
+            searchChickenType !== "All types" &&
+            searchChickenType !== "All"
               ? searchChickenType
               : undefined,
-          start_date: formatDate(searchDateRange.start),
-          end_date: formatDate(searchDateRange.end),
+          startDate: formatDate(searchDateRange.start),
+          endDate: formatDate(searchDateRange.end),
         });
+
+        const [result] = await Promise.all([apiCall, minLoadingTime]);
+        
         setBatches(result.data);
         setTotalPages(result.meta.total_pages);
       } catch (err) {
-        console.error(err);
+        await minLoadingTime;
+        if (err.response && err.response.status === 404) {
+          setBatches([]);
+          setTotalPages(1);
+        } else {
+          console.error("API Error:", err.message);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchBatches();
-  }, [activeTab, currentPage, searchQuery, searchChickenType, searchDateRange]);
+  }, [activeTab, currentPage, debouncedQuery, searchChickenType, searchDateRange]);
 
   useEffect(() => {
     sessionStorage.setItem("prediction_active_tab", activeTab);
@@ -165,6 +215,18 @@ const Prediction = () => {
               setSearchQuery(query);
               setCurrentPage(1);
             }}
+            onChange={(val) => {
+              let query = "";
+              if (typeof val === "string") {
+                query = val;
+              } else if (val?.target?.value !== undefined) {
+                query = val.target.value;
+              } else if (val?.query !== undefined) {
+                query = val.query;
+              }
+              setSearchQuery(query || "");
+              setCurrentPage(1);
+            }}
             onFilterChickenType={(val) => {
               setSearchChickenType(val);
               setCurrentPage(1);
@@ -196,7 +258,6 @@ const Prediction = () => {
                 <button
                   key={tab.key}
                   onClick={() => {
-                    setBatches([]);
                     setActiveTab(tab.key);
                     setCurrentPage(1);
                   }}
@@ -217,7 +278,9 @@ const Prediction = () => {
 
           {/* Cards */}
           {loading ? (
-            <p className="text-center text-gray-400 text-sm">Loading...</p>
+            Array.from({ length: 4 }).map((_, idx) => (
+              <SampleCardSkeleton key={idx} />
+            ))
           ) : batches.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
@@ -245,7 +308,6 @@ const Prediction = () => {
               <SampleCard
                 key={sample.batch_id}
                 sample={sample}
-                // ส่ง Batch ID ไปยังหน้ารายละเอียดสำหรับการวิเคราะห์
                 onClick={() =>
                   navigate(`/prediction/${sample.batch_id}`, {
                     state: { smear: sample },
@@ -256,7 +318,7 @@ const Prediction = () => {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && !loading && (
             <div className="flex items-center justify-center gap-1 mt-6">
               <button
                 onClick={() => setCurrentPage((p) => p - 1)}
