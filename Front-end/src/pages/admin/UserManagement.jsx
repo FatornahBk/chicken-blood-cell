@@ -18,6 +18,7 @@ import {
   suspendUser,
   updateUserRole,
 } from "../../services/admin/UserManagement";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 import { formatAdminDate } from "../../utils/adminDate";
 
 const normalizeUsers = (data) => {
@@ -268,19 +269,31 @@ function AdminUserManagement() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Total Users</p>
           <p className="mt-3 text-3xl font-bold text-slate-950">
-            {loading ? <SkeletonValue className="mt-0" /> : summary.total}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.total)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Active Accounts</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {loading ? <SkeletonValue className="mt-0" /> : summary.active}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.active)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm">
           <p className="text-lg font-medium text-slate-500">Suspended</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {loading ? <SkeletonValue className="mt-0" /> : summary.suspended}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.suspended)
+            )}
           </p>
         </article>
       </div>

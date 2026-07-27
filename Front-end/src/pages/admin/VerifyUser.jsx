@@ -18,6 +18,7 @@ import {
   undoRejectUser,
 } from "../../services/admin/VerifyUser";
 import { formatAdminDate } from "../../utils/adminDate";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 
 // แปลง response จาก API ให้เป็น array เสมอ เพราะแต่ละ backend อาจส่งรูปแบบไม่เหมือนกัน
 const normalizeUsers = (data) => {
@@ -174,7 +175,11 @@ function VerifyUser() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Pending</p>
           <p className="mt-3 text-3xl font-bold text-amber-600">
-            {loading ? <SkeletonValue className="mt-0" /> : summary.pending}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.pending)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -183,7 +188,7 @@ function VerifyUser() {
             {loading ? (
               <SkeletonValue className="mt-0" />
             ) : (
-              summary.approvedTotal
+              formatCompactNumber(summary.approvedTotal)
             )}
           </p>
         </article>
@@ -193,7 +198,7 @@ function VerifyUser() {
             {loading ? (
               <SkeletonValue className="mt-0" />
             ) : (
-              summary.rejectedTotal
+              formatCompactNumber(summary.rejectedTotal)
             )}
           </p>
         </article>

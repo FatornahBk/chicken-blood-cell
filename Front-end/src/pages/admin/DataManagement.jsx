@@ -13,6 +13,7 @@ import {
   suspendDatasetById,
 } from "../../services/admin/DataManagement";
 import { formatAdminDate } from "../../utils/adminDate";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 
 const emptyStatistics = {
   total_images: 0,
@@ -319,7 +320,7 @@ function AdminDataManagement() {
               {loading ? (
                 <SkeletonValue className="mt-0" />
               ) : (
-                Number(value || 0).toLocaleString()
+                formatCompactNumber(value)
               )}
             </p>
           </article>

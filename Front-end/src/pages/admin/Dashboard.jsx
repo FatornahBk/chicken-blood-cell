@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getDashboardUsers } from "../../services/admin/Dashboard";
 import { formatAdminDate } from "../../utils/adminDate";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 import {
   SkeletonValue,
   TableSkeletonRows,
@@ -278,7 +279,11 @@ function AdminDashboard() {
               <div>
                 <p className="text-lg font-medium text-slate-500">{label}</p>
                 <p className={`mt-3 text-3xl font-bold ${color}`}>
-                  {loading ? <SkeletonValue className="mt-0" /> : stats[key]}
+                  {loading ? (
+                    <SkeletonValue className="mt-0" />
+                  ) : (
+                    formatCompactNumber(stats[key])
+                  )}
                 </p>
               </div>
               <span className={`rounded-lg p-2.5 ${bg} ${color}`}>
