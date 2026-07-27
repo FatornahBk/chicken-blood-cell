@@ -8,21 +8,6 @@ import {
   predictBloodCell4kr,
 } from "../services/predict.js";
 
-const STAINS = [
-  {
-    key: "wright",
-    label: "Wright",
-    desc: "General blood staining reveals the main structural features of cells.",
-    image: "/src/assets/Wright.png",
-  },
-  {
-    key: "giemsa",
-    label: "Giemsa",
-    desc: "Provides detailed visualization of cellular structures and enables clear identification of parasites.",
-    image: "/src/assets/Gimsa.png",
-  },
-];
-
 const CELLS = [
   {
     title: "Basophil",
@@ -459,7 +444,7 @@ const Welcome = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [rawResponse, setRawResponse] = useState(null);
-  const [selectedStain, setSelectedStain] = useState(null);
+  const [selectedStain, setSelectedStain] = useState("Wright");
   const fileInputRef = useRef();
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -584,12 +569,12 @@ const Welcome = () => {
         "Thrombocyte",
       ];
 
-      const results = CELL_TYPES.map((type, i) => {
+      const results = CELL_TYPES.map((type) => {
         const data = response.classes[type];
         return {
           type,
           count: data ? data.count : 0,
-          confidence: data ? (data.avg_confidence * 100).toFixed(1) : null,
+          percentage: data && data.percentage !== undefined ? data.percentage : 0,
           color: CELL_COLOR_MAP[type] || "#999999",
         };
       });
@@ -626,75 +611,20 @@ const Welcome = () => {
           <span className="text-blue-500">Blood</span>
         </h1>
 
-        <p className="text-[16px] text-gray-500 max-w-3xl mx-auto leading-relaxed">
-          We bring intelligence to poultry diagnostics. Detect abnormalities in
-          seconds and enhance flock health with advanced deep-learning analysis
-          of chicken blood cells.
-        </p>
-
-        <div className="absolute left-0 right-0 bottom-0 translate-y-1/2 flex justify-center">
-          <div
-            className="flex gap-20 bg-[#e0e6f0] px-8 py-4 justify-center mx-auto items-center"
-            style={{ width: "960px", height: "88px" }}
-          >
-            {STAINS.map(({ key, label, desc, image }) => (
-              <div key={key} className="flex items-center gap-3">
-                <div className="w-[72px] h-[72px] rounded-full flex-shrink-0 border-2 border-[#a8c4e8] overflow-hidden bg-white">
-                  <img
-                    src={image}
-                    alt={label}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <p className="text-[14px] font-semibold text-[#1a3c6e] flex items-center gap-1.5 mb-0.5">
-                    {label}
-                    <TestTube2 size={18} color="#8fa8c8" />
-                  </p>
-                  <p className="text-[12px] text-[#8a9ab5] text-left">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-8 pb-16 pt-28 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Blood cell</h2>
-          <div className="flex gap-1">
-            {["Wright", "Giemsa"].map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  setSelectedStain(selectedStain === s ? null : s);
-                  setCardIndex(0);
-                }}
-                className={`px-3 h-7 rounded text-sm cursor-pointer transition-colors
-      ${
-        selectedStain === s
-          ? "bg-blue-500 text-white"
-          : "bg-gray-100 hover:bg-gray-200 text-gray-600"
-      }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-6">
-          {visibleCards.map((cell, i) => (
-            <CellCard key={`${cell.title}-${i}`} {...cell} />
-          ))}
-        </div>
+        <p className="text-[16px] md:text-[18px] text-gray-600 max-w-3xl mx-auto leading-relaxed">
+  The smart, collaborative workspace for poultry diagnostics. Upload blood
+  smears for instant AI analysis or save them for later, track your diagnostic
+  history over time, and explore a shared library of cases and results from a
+  global community of professionals.
+</p>
       </section>
 
       <div
         className="w-full bg-cover bg-center"
         style={{ backgroundImage: "url('/src/assets/VerifyUsers.png')" }}
       >
-        <section className="flex gap-20 px-8 pt-28 pb-32 max-w-5xl mx-auto items-start">
-          <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[600px]">
+        <section className="flex gap-10 px-8 pt-20 pb-20 max-w-7xl mx-auto items-start">
+          <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[720px]">
             <p className="text-[18px] font-semibold text-gray-700 tracking-wide">
               Select Stain Type
             </p>
@@ -729,7 +659,7 @@ const Welcome = () => {
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200 mb-2 overflow-hidden
-     ${previewURL ? "" : "min-h-[340px] p-4"}
+     ${previewURL ? "" : "min-h-[460px] p-4"}
     ${dragOver ? "border-[#3b9eff] bg-blue-50" : "border-gray-300 bg-gray-50 hover:border-[#3b9eff] hover:bg-blue-50"}`}
             >
               {previewURL ? (
@@ -801,7 +731,7 @@ const Welcome = () => {
             </button>
           </div>
 
-          <div className="flex-[1.4] bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[600px]">
+          <div className="flex-[1.4] bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 h-[720px]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h3 className="font-playfair text-lg font-bold text-gray-900">
@@ -846,7 +776,7 @@ const Welcome = () => {
             <div
               ref={containerRef}
               className="w-full rounded-xl bg-gray-100 relative"
-              style={{ height: "250px", overflow: "hidden" }}
+              style={{ height: "360px", overflow: "hidden" }}
               onWheel={(e) => {
                 e.preventDefault();
                 const newScale = Math.min(
@@ -1068,7 +998,7 @@ const Welcome = () => {
                         Count
                       </th>
                       <th className="text-left py-2 px-3 text-xs text-gray-400 font-semibold uppercase tracking-wider w-1/3">
-                        Confidence
+                        Proportion (%)
                       </th>
                     </tr>
                   </thead>
@@ -1088,7 +1018,7 @@ const Welcome = () => {
                           {row.count}
                         </td>
                         <td className="py-1.5 px-3 font-semibold text-[13px] text-green-500 w-1/3 text-center">
-                          {row.confidence ? `${row.confidence}%` : "—"}
+                          {row.count > 0 ? `${row.percentage}%` : "0%"}
                         </td>
                       </tr>
                     ))}
@@ -1100,7 +1030,9 @@ const Welcome = () => {
                       <td className="py-2 px-3 font-semibold text-[13px] text-gray-800 w-1/3 text-center">
                         {totalCells}
                       </td>
-                      <td className="py-2 px-3 w-1/3"></td>
+                      <td className="py-2 px-3 font-semibold text-[13px] text-gray-500 w-1/3 text-center">
+          100%
+        </td>
                     </tr>
                   </tbody>
                 </table>
@@ -1108,8 +1040,39 @@ const Welcome = () => {
             </div>
           </div>
         </section>
-        <Footer />
       </div>
+
+      <section className="px-8 pb-16 pt-28 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-800">Blood cell</h2>
+          <div className="flex gap-1">
+            {["Wright", "Giemsa"].map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  setSelectedStain(selectedStain === s ? null : s);
+                  setCardIndex(0);
+                }}
+                className={`px-3 h-7 rounded text-sm cursor-pointer transition-colors
+      ${
+        selectedStain === s
+          ? "bg-blue-500 text-white"
+          : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+      }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-6">
+          {visibleCards.map((cell, i) => (
+            <CellCard key={`${cell.title}-${i}`} {...cell} />
+          ))}
+        </div>
+      </section>
+      
+      <Footer />
 
       {isFullscreen &&
         rawResponse &&
