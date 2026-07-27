@@ -1,9 +1,9 @@
 import { predictClient, uploadClient, registerClient } from './api';
 
 export const getPendingBatches = async (stain_type, page = 1, filters = {}) => {
-  const { smear_id, chicken_type, start_date, end_date } = filters;
+  const { smear_id, chicken_type, startDate, endDate } = filters;
   const response = await uploadClient.get("/batches/prediction/pending", {
-    params: { page, stain_type, smear_id, chicken_type, start_date, end_date },
+    params: { page, stain_type, smear_id, chicken_type, startDate, endDate },
   });
   return response.data;
 };
