@@ -20,7 +20,7 @@ import {
 import { formatAdminDate } from "../../utils/adminDate";
 import { formatCompactNumber } from "../../utils/formatCompactNumber";
 
-// แปลง response จาก API ให้เป็น array เสมอ เพราะแต่ละ backend อาจส่งรูปแบบไม่เหมือนกัน
+// แปลง response เป็น array เสมอ เพราะ backend แต่ละเวอร์ชันอาจห่อข้อมูลไม่เหมือนกัน
 const normalizeUsers = (data) => {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.users)) return data.users;
@@ -28,6 +28,7 @@ const normalizeUsers = (data) => {
   return [];
 };
 
+// อ่านยอดรวมแต่ละสถานะ และใช้จำนวนแถวปัจจุบันเป็น fallback ของ pending
 const normalizeSummary = (data, users = []) => ({
   pending: Number(data?.summary?.pending ?? users.length),
   approvedTotal: Number(data?.summary?.approved_total ?? 0),
@@ -35,8 +36,9 @@ const normalizeSummary = (data, users = []) => ({
 });
 
 function VerifyUser() {
+  // จำนวนรายการต่อหน้าต้องตรงกับ limit ที่ส่งให้ backend
   const pageSize = 10;
-  // state หลักของหน้า: ข้อมูล, คำค้นหา, loading, action ที่กำลังทำ, และ error
+  // state หลักของหน้า: ข้อมูล สถิติ ตัวกรอง pagination และสถานะ UI
   const [pendingUsers, setPendingUsers] = useState([]);
   const [summary, setSummary] = useState({
     pending: 0,
@@ -52,11 +54,12 @@ function VerifyUser() {
     totalPages: 1,
   });
   const [loading, setLoading] = useState(true);
+  // actionUserId กันการกดซ้ำ ส่วน confirmAction เก็บ user/action ของ modal
   const [actionUserId, setActionUserId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [error, setError] = useState("");
 
-  // โหลดข้อมูลจาก API แล้วเก็บลง pendingUsers
+  // โหลดข้อมูลจาก API, normalize รูปแบบ และเก็บ meta สำหรับ pagination
   const loadPendingUsers = useCallback(async () => {
     setError("");
     setLoading(true);
@@ -68,6 +71,8 @@ function VerifyUser() {
         page,
         limit: pageSize,
       });
+
+      // เรียงตาม user_id เพื่อให้ลำดับตารางคงที่ระหว่างการโหลด
       const users = normalizeUsers(data).sort(
         (first, second) => Number(first.user_id) - Number(second.user_id),
       );
@@ -88,7 +93,7 @@ function VerifyUser() {
     }
   }, [page, search, status]);
 
-  // โหลดข้อมูลใหม่เมื่อค้นหาด้วยอีเมล โดยหน่วงเล็กน้อยเพื่อไม่ยิง API ทุกปุ่มที่กดทันที
+  // debounce 300 ms เพื่อไม่ยิง API ทุกปุ่มที่กดระหว่างค้นหา
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       loadPendingUsers();
@@ -97,6 +102,7 @@ function VerifyUser() {
     return () => window.clearTimeout(timeoutId);
   }, [loadPendingUsers]);
 
+  // เปลี่ยนคำค้นหาหรือสถานะแล้วต้องเริ่มดูผลลัพธ์จากหน้าแรก
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
@@ -107,7 +113,7 @@ function VerifyUser() {
     setPage(1);
   };
 
-  // ใช้ function เดียวกันสำหรับ approve/reject แล้วเลือก API จาก action
+  // handler เดียวรองรับ approve/reject/undo โดยเลือก API ตาม action
   const handleVerifyUser = async (userId, action) => {
     setError("");
     setActionUserId(userId);
@@ -121,6 +127,7 @@ function VerifyUser() {
         await rejectUser(userId);
       }
 
+      // โหลดซ้ำเพื่อให้รายการ summary และ pagination ตรงกับ backend
       await loadPendingUsers();
     } catch (err) {
       setError(err.response?.data?.message ?? "Unable to update user status");
@@ -130,6 +137,7 @@ function VerifyUser() {
     }
   };
 
+  // modal กลางเก็บทั้งผู้ใช้และ action เพื่อสร้างข้อความยืนยันให้ถูกต้อง
   const openConfirmModal = (user, action) => {
     setConfirmAction({ user, action });
   };

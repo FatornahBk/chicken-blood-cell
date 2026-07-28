@@ -1,5 +1,9 @@
 import { loginClient } from "../api";
 
+/**
+ * สร้าง header ยืนยันตัวตนและ query parameters สำหรับ API ของ admin
+ * ค่าตัวกรองที่ว่างจะไม่ถูกแนบไปกับ URL
+ */
 const authConfig = (params = {}) => {
   const token = localStorage.getItem("access_token");
   const cleanParams = Object.fromEntries(
@@ -16,6 +20,10 @@ const authConfig = (params = {}) => {
   };
 };
 
+/**
+ * โหลดบัญชีผู้ใช้ตาม role, email, status และหน้าปัจจุบัน
+ * backend เป็นผู้กรองและแบ่งหน้า ส่วน frontend จะ normalize ก่อนแสดงผล
+ */
 export const getAllUsers = async ({
   role = "",
   email = "",
@@ -36,6 +44,7 @@ export const getAllUsers = async ({
   return response.data;
 };
 
+/** เปลี่ยน role ของบัญชีที่ระบุ แล้วคืน payload ล่าสุดจาก backend */
 export const updateUserRole = async (userId, role) => {
   const response = await loginClient.patch(
     `/user/admin/update-role/${userId}`,
@@ -45,6 +54,7 @@ export const updateUserRole = async (userId, role) => {
   return response.data;
 };
 
+/** ระงับบัญชีผู้ใช้พร้อมบันทึกเหตุผลที่ admin ระบุ */
 export const suspendUser = async (userId, reason) => {
   const response = await loginClient.patch(
     `/user/admin/suspend/${userId}`,
@@ -54,6 +64,7 @@ export const suspendUser = async (userId, reason) => {
   return response.data;
 };
 
+/** เปิดใช้งานบัญชีที่ถูกระงับให้กลับมาใช้งานได้อีกครั้ง */
 export const activateUser = async (userId) => {
   const response = await loginClient.patch(
     `/user/admin/activate/${userId}`,

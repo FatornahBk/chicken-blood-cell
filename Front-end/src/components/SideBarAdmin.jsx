@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Database, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
+
+// แหล่งข้อมูลเมนู admin: path ใช้เปลี่ยน route และ icon ใช้แสดงข้างชื่อเมนู
 const ADMIN_SIDEBAR_OPTIONS = [
   {
     label: "Dashboard",
@@ -23,6 +25,11 @@ const ADMIN_SIDEBAR_OPTIONS = [
   },
 ];
 
+/**
+ * Sidebar สำหรับส่วนผู้ดูแลระบบ
+ * รับ options เพิ่มได้เพื่อใช้ทดสอบหรือปรับรายการเมนู
+ * แต่ค่าปกติจะใช้เมนู admin ที่ประกาศไว้ด้านบน
+ */
 const SideBarAdmin = ({ options = ADMIN_SIDEBAR_OPTIONS }) => {
   return (
     <aside className="sticky top-16 flex h-[calc(100vh-4rem)] w-72 shrink-0 self-start flex-col overflow-y-auto border-r border-slate-200/80 bg-slate-50/95 shadow-[4px_0_18px_rgba(15,23,42,0.03)]">
@@ -33,10 +40,12 @@ const SideBarAdmin = ({ options = ADMIN_SIDEBAR_OPTIONS }) => {
       </div>
 
       <nav className="flex-1 space-y-1.5 px-3 py-2">
+        {/* NavLink เติม style ของเมนู active ตาม URL ปัจจุบันโดยอัตโนมัติ */}
         {options.map(({ label, path, icon }) => {
           const SidebarIcon = icon;
 
           return (
+            // Dashboard ใช้ `end` เพื่อให้ active เฉพาะ /admin ไม่รวม route ลูก
             <NavLink
               key={path}
               to={path}
