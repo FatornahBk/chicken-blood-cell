@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Database, Eye, LoaderCircle, Search } from "lucide-react";
+import {
+  Ban,
+  Database,
+  Eye,
+  LoaderCircle,
+  Search,
+} from "lucide-react";
 import Pagination from "../../components/Pagination";
+import { DateRangeFilter } from "../../components/SearchBar";
 import {
   SkeletonValue,
   TableSkeletonRows,
@@ -206,6 +213,10 @@ function AdminDataManagement() {
     total_pages: 0,
   });
   const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [stainFilter, setStainFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -225,6 +236,10 @@ function AdminDataManagement() {
         page,
         limit: 10,
         email: search,
+        startDate,
+        endDate,
+        stainType: stainFilter,
+        status: statusFilter,
       });
       const tableData = Array.isArray(data?.table_data) ? data.table_data : [];
 
@@ -270,7 +285,7 @@ function AdminDataManagement() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [endDate, page, search, stainFilter, startDate, statusFilter]);
 
   useEffect(() => {
     // debounce การค้นหา และโหลดใหม่เมื่อ page หรือ search เปลี่ยน
@@ -314,6 +329,24 @@ function AdminDataManagement() {
 
   const totalPages = Number(meta.total_pages) || 0;
   const currentPage = Number(meta.current_page) || page;
+  const updateFilter = (setter) => (event) => {
+    setter(event.target.value);
+    setPage(1);
+  };
+
+  const handleDateFilterChange = (range) => {
+    const toApiDate = (date) => {
+      if (!date) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    setStartDate(toApiDate(range?.start));
+    setEndDate(toApiDate(range?.end));
+    setPage(1);
+  };
 
   return (
     <section className="space-y-6">
@@ -359,24 +392,55 @@ function AdminDataManagement() {
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" aria-hidden="true" />
             <h2 className="text-lg font-bold text-slate-950">Datasets</h2>
           </div>
-          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100">
-            <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input
-              type="search"
-              placeholder="Search by email"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              className="w-56 bg-transparent text-sm outline-none placeholder:text-slate-400"
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <label className="flex h-[38px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 shadow-sm focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100">
+              <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Search by email"
+                value={search}
+                onChange={updateFilter(setSearch)}
+                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 sm:w-56"
+              />
+            </label>
+
+            <label>
+              <select
+                value={stainFilter}
+                onChange={updateFilter(setStainFilter)}
+                className="h-[38px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                aria-label="Filter by stain type"
+              >
+                <option value="">All stain types</option>
+                <option value="Wright">Wright</option>
+                <option value="Giemsa">Giemsa</option>
+              </select>
+            </label>
+
+            <label>
+              <select
+                value={statusFilter}
+                onChange={updateFilter(setStatusFilter)}
+                className="h-[38px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                aria-label="Filter by dataset status"
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </label>
+
+            <DateRangeFilter
+              onChange={handleDateFilterChange}
+              label="Sort by Date"
             />
-          </label>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

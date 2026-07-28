@@ -463,6 +463,88 @@ function CalendarPicker({ startDate, endDate, onChange, onApply }) {
   );
 }
 
+// ตัวเลือกช่วงวันที่แบบเดียวกับหน้า Home สำหรับนำไปใช้ในหน้าอื่น
+export function DateRangeFilter({ onChange, label = "Sort by Date" }) {
+  const [showCal, setShowCal] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const calRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (calRef.current && !calRef.current.contains(event.target)) {
+        setShowCal(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const fmtShort = (date) =>
+    `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  const hasDate = Boolean(dateRange.start);
+  const buttonLabel = hasDate
+    ? `${fmtShort(dateRange.start)}${
+        dateRange.end ? ` – ${fmtShort(dateRange.end)}` : ""
+      }`
+    : label;
+
+  const handleChange = (range) => {
+    setDateRange(range);
+    onChange?.(range.start ? range : null);
+  };
+
+  const clearDate = (event) => {
+    event.stopPropagation();
+    handleChange({ start: null, end: null });
+    setShowCal(false);
+  };
+
+  return (
+    <div className="relative flex-shrink-0" ref={calRef}>
+      <button
+        type="button"
+        className={[
+          "flex h-[38px] items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 font-[inherit] text-[13.5px] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-[130ms]",
+          hasDate
+            ? "border-blue-300 bg-blue-50 text-blue-600"
+            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50",
+        ].join(" ")}
+        onClick={() => setShowCal((visible) => !visible)}
+        aria-expanded={showCal}
+        aria-label="Filter by date range"
+      >
+        <span
+          className={`flex items-center ${
+            hasDate ? "text-blue-400" : "text-gray-400"
+          }`}
+        >
+          <CalendarIcon />
+        </span>
+        {buttonLabel}
+        {hasDate && (
+          <span
+            className="ml-0.5 flex items-center rounded p-0.5 text-gray-400 transition-colors hover:text-red-500"
+            onClick={clearDate}
+            role="button"
+            aria-label="Clear date range"
+          >
+            <XSmallIcon />
+          </span>
+        )}
+      </button>
+
+      {showCal && (
+        <CalendarPicker
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          onChange={handleChange}
+          onApply={() => setShowCal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Main SearchBar ───────────────────────────────────────────────────────────
 //
 // Props:
