@@ -105,7 +105,7 @@ const Navbar = () => {
             <button
               onClick={() => handleNav("/admin")}
               className={`text-sm font-medium transition-colors duration-150 ${
-                location.pathname === "/admin"
+                location.pathname.startsWith("/admin")
                   ? "text-blue-500"
                   : "text-gray-600 hover:text-blue-400"
               }`}

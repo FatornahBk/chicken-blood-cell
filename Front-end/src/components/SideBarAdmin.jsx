@@ -25,17 +25,14 @@ const ADMIN_SIDEBAR_OPTIONS = [
 
 const SideBarAdmin = ({ options = ADMIN_SIDEBAR_OPTIONS }) => {
   return (
-    <aside className="flex min-h-[calc(100vh-4rem)] w-72 self-stretch flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-slate-900">
-            Admin Panel
-          </p>
-          <p className="truncate text-xs text-slate-500">Admin Panel</p>
-        </div>
+    <aside className="sticky top-16 flex h-[calc(100vh-4rem)] w-72 shrink-0 self-start flex-col overflow-y-auto border-r border-slate-200/80 bg-slate-50/95 shadow-[4px_0_18px_rgba(15,23,42,0.03)]">
+      <div className="px-6 pb-3 pt-7">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+          Admin menu
+        </p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-4 py-6">
+      <nav className="flex-1 space-y-1.5 px-3 py-2">
         {options.map(({ label, path, icon }) => {
           const SidebarIcon = icon;
 
@@ -46,23 +43,28 @@ const SideBarAdmin = ({ options = ADMIN_SIDEBAR_OPTIONS }) => {
               end={path === "/admin"}
               className={({ isActive }) =>
                 [
-                  "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-xl border-l-4 px-4 py-3 text-sm font-semibold transition-all duration-200",
                   isActive
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
+                    ? "border-blue-600 bg-white text-blue-600 shadow-sm"
+                    : "border-transparent text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-sm",
                 ].join(" ")
               }
             >
-              <SidebarIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <SidebarIcon
+                className="h-[19px] w-[19px] shrink-0"
+                aria-hidden="true"
+              />
               <span className="truncate">{label}</span>
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="border-t border-slate-100 px-6 py-4">
-        <p className="text-xs font-medium text-slate-500">Administrator</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">
+      <div className="m-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          Administrator
+        </p>
+        <p className="mt-1 truncate text-sm font-semibold text-slate-800">
           Chicken Blood Cell
         </p>
       </div>

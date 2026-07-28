@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 import { getDashboardUsers } from "../../services/admin/Dashboard";
 import { formatAdminDate } from "../../utils/adminDate";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
+import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
 
 const submittedAt = (user) =>
   user.created_at ?? user.createdAt ?? user.submitted_at ?? user.submittedAt;
@@ -242,7 +247,7 @@ function AdminDashboard() {
       } catch (err) {
         if (mounted)
           setError(
-            err.response?.data?.message ?? "ไม่สามารถดึงข้อมูล Dashboard ได้",
+            err.response?.data?.message ?? "Unable to retrieve dashboard data",
           );
       } finally {
         if (mounted) setLoading(false);
@@ -274,7 +279,11 @@ function AdminDashboard() {
               <div>
                 <p className="text-lg font-medium text-slate-500">{label}</p>
                 <p className={`mt-3 text-3xl font-bold ${color}`}>
-                  {loading ? "..." : stats[key]}
+                  {loading ? (
+                    <SkeletonValue className="mt-0" />
+                  ) : (
+                    formatCompactNumber(stats[key])
+                  )}
                 </p>
               </div>
               <span className={`rounded-lg p-2.5 ${bg} ${color}`}>
@@ -313,16 +322,7 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading && (
-                  <tr>
-                    <td
-                      colSpan="4"
-                      className="px-4 py-10 text-center text-slate-500"
-                    >
-                      กำลังโหลดข้อมูล...
-                    </td>
-                  </tr>
-                )}
+                {loading && <TableSkeletonRows columns={4} rows={3} />}
                 {!loading && error && (
                   <tr>
                     <td
@@ -339,7 +339,7 @@ function AdminDashboard() {
                       colSpan="4"
                       className="px-4 py-10 text-center text-slate-500"
                     >
-                      ไม่มีผู้ใช้ที่รออนุมัติ
+                      No users are awaiting approval
                     </td>
                   </tr>
                 )}

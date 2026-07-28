@@ -8,12 +8,17 @@ import {
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import {
+  SkeletonValue,
+  TableSkeletonRows,
+} from "../../components/AdminSkeleton";
+import {
   approveUser,
   getPendingUsers,
   rejectUser,
   undoRejectUser,
 } from "../../services/admin/VerifyUser";
 import { formatAdminDate } from "../../utils/adminDate";
+import { formatCompactNumber } from "../../utils/formatCompactNumber";
 
 // แปลง response จาก API ให้เป็น array เสมอ เพราะแต่ละ backend อาจส่งรูปแบบไม่เหมือนกัน
 const normalizeUsers = (data) => {
@@ -76,7 +81,7 @@ function VerifyUser() {
     } catch (err) {
       setError(
         err.response?.data?.message ??
-          "ไม่สามารถดึงข้อมูลผู้ใช้ที่รออนุมัติได้",
+          "Unable to retrieve users awaiting approval",
       );
     } finally {
       setLoading(false);
@@ -118,7 +123,7 @@ function VerifyUser() {
 
       await loadPendingUsers();
     } catch (err) {
-      setError(err.response?.data?.message ?? "ไม่สามารถอัปเดตสถานะผู้ใช้ได้");
+      setError(err.response?.data?.message ?? "Unable to update user status");
     } finally {
       setActionUserId(null);
       setConfirmAction(null);
@@ -170,19 +175,31 @@ function VerifyUser() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Pending</p>
           <p className="mt-3 text-3xl font-bold text-amber-600">
-            {summary.pending}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.pending)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Approved Total</p>
           <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {summary.approvedTotal}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.approvedTotal)
+            )}
           </p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-lg font-medium text-slate-500">Rejected Total</p>
           <p className="mt-3 text-3xl font-bold text-rose-600">
-            {summary.rejectedTotal}
+            {loading ? (
+              <SkeletonValue className="mt-0" />
+            ) : (
+              formatCompactNumber(summary.rejectedTotal)
+            )}
           </p>
         </article>
       </div>
@@ -233,16 +250,7 @@ function VerifyUser() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-10 text-center text-slate-500"
-                  >
-                    กำลังโหลดข้อมูล...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableSkeletonRows columns={6} />}
 
               {!loading && error && (
                 <tr>
@@ -261,7 +269,7 @@ function VerifyUser() {
                     colSpan="6"
                     className="px-6 py-10 text-center text-slate-500"
                   >
-                    ไม่มีผู้ใช้ที่รออนุมัติ
+                    No users are awaiting approval
                   </td>
                 </tr>
               )}
@@ -334,16 +342,17 @@ function VerifyUser() {
             </tbody>
           </table>
         </div>
-        {!loading && !error && (
-          <div className="flex justify-center border-t border-slate-100 px-6 py-4">
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
       </section>
+
+      {!loading && !error && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {confirmAction && (
         <div
