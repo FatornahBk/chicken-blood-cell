@@ -1,6 +1,9 @@
 import { loginClient } from "../api";
 
-// สร้าง config สำหรับ API ที่ต้องใช้ token หลัง login
+/**
+ * สร้าง config สำหรับ API ที่ต้องใช้ token หลัง login
+ * อ่าน token ทุกครั้งที่ยิง request เพื่อไม่เก็บ token เก่าไว้ใน module
+ */
 const authConfig = () => {
   const token = localStorage.getItem("access_token");
 
@@ -11,7 +14,10 @@ const authConfig = () => {
   };
 };
 
-// ดึงรายชื่อผู้ใช้ที่รออนุมัติหรือถูกปฏิเสธ พร้อมตัวกรองและ pagination
+/**
+ * ดึงรายชื่อผู้ใช้ตามสถานะการตรวจสอบ พร้อมตัวกรอง email และ pagination
+ * keyword จะถูก trim และส่งเฉพาะเมื่อมีคำค้นหาจริง
+ */
 export const getPendingUsers = async ({
   email = "",
   status = "all",
@@ -28,7 +34,7 @@ export const getPendingUsers = async ({
   return response.data;
 };
 
-// อนุมัติผู้ใช้ตาม user_id
+/** อนุมัติบัญชีตาม user_id ให้สามารถเข้าใช้งานระบบได้ */
 export const approveUser = async (userId) => {
   const response = await loginClient.patch(
     `/user/admin/approve/${userId}`,
@@ -38,7 +44,7 @@ export const approveUser = async (userId) => {
   return response.data;
 };
 
-// ปฏิเสธผู้ใช้ตาม user_id
+/** ปฏิเสธคำขอสมัครของบัญชีตาม user_id */
 export const rejectUser = async (userId) => {
   const response = await loginClient.patch(
     `/user/admin/reject/${userId}`,
@@ -48,7 +54,7 @@ export const rejectUser = async (userId) => {
   return response.data;
 };
 
-// ยกเลิกการปฏิเสธและคืนผู้ใช้กลับเป็นสถานะรออนุมัติ
+/** ยกเลิกการปฏิเสธและคืนบัญชีกลับไปอยู่ในคิวรออนุมัติ */
 export const undoRejectUser = async (userId) => {
   const response = await loginClient.patch(
     `/user/admin/undo-reject/${userId}`,

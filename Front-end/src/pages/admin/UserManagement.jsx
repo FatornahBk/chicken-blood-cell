@@ -21,6 +21,7 @@ import {
 import { formatCompactNumber } from "../../utils/formatCompactNumber";
 import { formatAdminDate } from "../../utils/adminDate";
 
+// ทำให้รายการผู้ใช้เป็น array เสมอ แม้ response จะห่อข้อมูลต่างกัน
 const normalizeUsers = (data) => {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.users)) return data.users;
@@ -28,6 +29,7 @@ const normalizeUsers = (data) => {
   return [];
 };
 
+// อ่านยอดรวมจาก backend; คืน null เพื่อเปิดใช้ fallback หากไม่มี summary
 const normalizeSummary = (data) => {
   const summary = data?.summary;
 
@@ -40,6 +42,7 @@ const normalizeSummary = (data) => {
   };
 };
 
+// สร้างอักษรย่อสองตัวสำหรับ avatar เมื่อผู้ใช้ไม่มีรูปโปรไฟล์
 const getInitials = (name = "") => {
   const parts = name.trim().split(/\s+/);
 
@@ -51,6 +54,7 @@ const getInitials = (name = "") => {
   return clean.slice(0, 2).toUpperCase();
 };
 
+// รองรับ is_active ทั้ง boolean, string และตัวเลขจาก backend/database
 const isUserActive = (user) => {
   return (
     user.is_active === true ||
@@ -59,10 +63,12 @@ const isUserActive = (user) => {
   );
 };
 
+// บัญชีที่ไม่เข้าเงื่อนไข active จะถือว่า suspended
 const isUserSuspended = (user) => {
   return !isUserActive(user);
 };
 
+// แปลงสถานะบัญชีเป็นข้อความและ class สีของ badge ในตาราง
 const getAccountStatus = (user) => {
   if (isUserSuspended(user)) {
     return {
@@ -80,13 +86,16 @@ const getAccountStatus = (user) => {
 const roleOptions = ["admin", "user"];
 
 function AdminUserManagement() {
+  // users คือข้อมูลหน้าปัจจุบัน ส่วน apiSummary คือยอดรวมทุกหน้าจาก backend
   const [users, setUsers] = useState([]);
   const [apiSummary, setApiSummary] = useState(null);
+  // ตัวกรองเหล่านี้ถูกส่งไป backend และใช้ร่วมกับ pagination
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
+  // meta เก็บจำนวนรายการ หน้าปัจจุบัน และจำนวนหน้าที่ backend ส่งกลับ
   const [meta, setMeta] = useState({
     total_items: 0,
     current_page: 1,
@@ -95,6 +104,7 @@ function AdminUserManagement() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // actionUserId ใช้กัน action ซ้ำ และ confirmAction เก็บข้อมูลของ modal
   const [actionUserId, setActionUserId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
 
@@ -109,6 +119,7 @@ function AdminUserManagement() {
       setLoading(true);
 
       try {
+        // ให้ backend ค้นหาและกรอง เพื่อให้ผลรวมถูกต้องข้ามทุกหน้า
         const data = await getAllUsers({
           email,
           role,
@@ -116,6 +127,8 @@ function AdminUserManagement() {
           page: currentPage,
           limit,
         });
+
+        // เรียง ID เพื่อให้ลำดับในตารางคงที่ก่อนนำไปแสดง
         setUsers(
           [...normalizeUsers(data)].sort(
             (firstUser, secondUser) =>
@@ -134,6 +147,7 @@ function AdminUserManagement() {
   );
 
   useEffect(() => {
+    // debounce 300 ms ลดการยิง API ระหว่างที่ admin กำลังพิมพ์
     const timeoutId = window.setTimeout(() => {
       loadUsers({
         email: search,
@@ -146,6 +160,7 @@ function AdminUserManagement() {
     return () => window.clearTimeout(timeoutId);
   }, [loadUsers, page, roleFilter, search, statusFilter]);
 
+  // เมื่อ filter เปลี่ยนต้องกลับหน้าแรก เพราะผลลัพธ์ชุดใหม่อาจมีจำนวนหน้าน้อยลง
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
@@ -162,6 +177,7 @@ function AdminUserManagement() {
   };
 
   const summary = useMemo(() => {
+    // fallback นับเฉพาะข้อมูลหน้าปัจจุบัน และใช้เมื่อ backend ไม่ส่ง summary
     const computedSummary = {
       total: users.length,
       active: users.filter(isUserActive).length,
@@ -171,6 +187,7 @@ function AdminUserManagement() {
     return apiSummary ?? computedSummary;
   }, [apiSummary, users]);
 
+  // ทุก mutation โหลดข้อมูลใหม่ เพื่อให้ตารางและ summary ตรงกับฐานข้อมูล
   const handleRoleChange = async (userId, role) => {
     setError("");
     setActionUserId(userId);
@@ -217,10 +234,12 @@ function AdminUserManagement() {
   };
 
   const closeConfirmModal = () => {
+    // ระหว่าง request ยังทำงาน ไม่ให้ปิด modal จนกว่าจะทราบผล
     if (actionUserId) return;
     setConfirmAction(null);
   };
 
+  // modal เดียวรองรับหลาย action โดยเก็บ type, user และค่าที่ action ต้องใช้
   const openRoleModal = (user) => {
     setConfirmAction({ type: "role", user, nextRole: user.role ?? "user" });
   };

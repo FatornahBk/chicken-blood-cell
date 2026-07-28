@@ -15,6 +15,7 @@ import {
 import { formatAdminDate } from "../../utils/adminDate";
 import { formatCompactNumber } from "../../utils/formatCompactNumber";
 
+// ค่าเริ่มต้นของการ์ดสถิติ ป้องกัน undefined ระหว่างรอ API
 const emptyStatistics = {
   total_images: 0,
   total_batches: 0,
@@ -22,6 +23,7 @@ const emptyStatistics = {
   total_giemsa: 0,
 };
 
+// helper ชุดนี้รองรับชื่อ field หลายแบบ โดยเลือกค่าที่พบตามลำดับ
 const getId = (item) =>
   item.batch_id ?? item.dataset_id ?? item.id ?? item.data_id;
 
@@ -54,6 +56,7 @@ const getStatus = (item) =>
   item.status ??
   item.prediction_status ??
   item.predict_status ??
+  // หากไม่มี status ระดับ dataset จะประเมินจากสถานะของ images เป็น fallback
   (Array.isArray(item.images) && item.images.length > 0
     ? item.images.every((image) =>
         ["complete", "completed", "predicted", "success"].includes(
@@ -73,6 +76,7 @@ const getStatus = (item) =>
 const getCreatedAt = (item) =>
   item.created_at ?? item.createdAt ?? item.uploaded_at ?? item.date;
 
+// แปลงสถานะเป็นชุดสี badge: suspended, completed หรือสถานะที่ยังไม่เสร็จ
 const statusStyle = (status) => {
   const normalized = String(status).toLowerCase();
   if (["suspend", "suspended"].includes(normalized)) {
@@ -84,6 +88,7 @@ const statusStyle = (status) => {
     : "bg-amber-50 text-amber-700";
 };
 
+// mapping ชื่อเซลล์ใน UI กับชื่อ field แบบเดิมของ prediction response
 const cellCountFields = {
   Heterophil: "numOfHeterophils",
   Eosinophil: "numOfEosinophils",
@@ -93,9 +98,14 @@ const cellCountFields = {
   Thrombocyte: "numOfThrombocytes",
 };
 
+/**
+ * ทำให้ prediction จาก backend มีโครงสร้างมาตรฐานสำหรับ BloodCellDetailModal
+ * รองรับ JSON string, รูปแบบใหม่ที่มี cell_counts และรูปแบบเดิมที่แยก count เป็น field
+ */
 const normalizePrediction = (prediction) => {
   if (!prediction) return null;
 
+  // prediction บางรายการถูกบันทึกเป็น JSON string จึงต้อง parse ก่อนอ่าน field
   let parsedPrediction = prediction;
   if (typeof prediction === "string") {
     try {
@@ -105,16 +115,20 @@ const normalizePrediction = (prediction) => {
     }
   }
 
+  // รูปแบบใหม่พร้อมใช้แล้ว จึงไม่คำนวณทับค่าที่ backend ส่งมา
   if (parsedPrediction.cell_counts || parsedPrediction.cell_percentages) {
     return parsedPrediction;
   }
 
+  // รูปแบบเก่า: รวม count ของเซลล์ทั้งหกชนิดไว้ใต้ cell_counts
   const cellCounts = Object.fromEntries(
     Object.entries(cellCountFields).map(([label, field]) => [
       label,
       Number(parsedPrediction[field] ?? 0),
     ]),
   );
+
+  // คำนวณ percentage เป็น fallback เมื่อ response แบบเก่าไม่มีค่าให้
   const totalCells = Object.values(cellCounts).reduce(
     (total, count) => total + count,
     0,
@@ -125,6 +139,8 @@ const normalizePrediction = (prediction) => {
       totalCells > 0 ? (count / totalCells) * 100 : 0,
     ]),
   );
+
+  // ทำให้ทุก detection อ่านพิกัดผ่าน bbox ได้ ทั้งรูปแบบ nested และ flat
   const detections = Array.isArray(parsedPrediction.detections)
     ? parsedPrediction.detections.map((detection) => ({
         ...detection,
@@ -146,6 +162,10 @@ const normalizePrediction = (prediction) => {
   };
 };
 
+/**
+ * แปลง dataset จาก API เป็น props ที่ modal รายละเอียดต้องการ
+ * รวมข้อมูลเจ้าของ รูปภาพ prediction และ metadata ไว้ในโครงสร้างเดียว
+ */
 const toModalData = (item) => {
   const images = Array.isArray(item.images) ? item.images : [];
   const user = item.user ?? item.owner ?? {};
@@ -176,6 +196,7 @@ const toModalData = (item) => {
 };
 
 function AdminDataManagement() {
+  // datasets คือข้อมูลตารางปัจจุบัน ส่วน statistics/meta มาจาก endpoint รายการ
   const [datasets, setDatasets] = useState([]);
   const [statistics, setStatistics] = useState(emptyStatistics);
   const [meta, setMeta] = useState({
@@ -189,6 +210,8 @@ function AdminDataManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [suspendingId, setSuspendingId] = useState(null);
+
+  // selectedDataset เปิด detail modal; suspendCandidate เปิด modal ยืนยัน
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [suspendCandidate, setSuspendCandidate] = useState(null);
 
@@ -197,12 +220,15 @@ function AdminDataManagement() {
     setError("");
 
     try {
+      // endpoint รายการเป็นแหล่งข้อมูลหลักของตาราง สถิติ และ pagination
       const data = await getAllDatasets({
         page,
         limit: 10,
         email: search,
       });
       const tableData = Array.isArray(data?.table_data) ? data.table_data : [];
+
+      // เติมรายละเอียดรายตัวเฉพาะแถวที่ข้อมูลสำหรับ modal ยังไม่ครบ
       const enrichedDatasets = await Promise.all(
         tableData.map(async (item) => {
           const id = getId(item);
@@ -210,6 +236,7 @@ function AdminDataManagement() {
             return item;
           }
 
+          // หากมี images และข้อมูลเจ้าของแล้ว ไม่ต้องยิง request รายละเอียดซ้ำ
           const hasModalDetail =
             Array.isArray(item.images) &&
             item.images.length > 0 &&
@@ -233,6 +260,7 @@ function AdminDataManagement() {
         }),
       );
 
+      // statistics/meta เป็นค่าจาก backend ไม่ได้นับเฉพาะแถวในหน้าปัจจุบัน
       setDatasets(enrichedDatasets);
       setStatistics({ ...emptyStatistics, ...data?.statistics });
       setMeta((current) => ({ ...current, ...data?.meta }));
@@ -245,10 +273,12 @@ function AdminDataManagement() {
   }, [page, search]);
 
   useEffect(() => {
+    // debounce การค้นหา และโหลดใหม่เมื่อ page หรือ search เปลี่ยน
     const timeoutId = window.setTimeout(loadDatasets, 300);
     return () => window.clearTimeout(timeoutId);
   }, [loadDatasets]);
 
+  // ระงับ dataset หลังยืนยัน และถ้าหน้าปัจจุบันว่างให้ย้อนกลับหนึ่งหน้า
   const handleSuspend = async () => {
     const item = suspendCandidate;
     if (!item) return;
@@ -276,6 +306,7 @@ function AdminDataManagement() {
     }
   };
 
+  // ไม่ให้ปิด modal ระหว่าง request suspend เพื่อกัน action ซ้ำ
   const closeSuspendModal = () => {
     if (suspendingId !== null) return;
     setSuspendCandidate(null);

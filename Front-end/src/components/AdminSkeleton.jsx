@@ -1,3 +1,7 @@
+/**
+ * Placeholder สำหรับค่าตัวเลขบนการ์ดสถิติระหว่างรอ API
+ * animate-pulse ช่วยสื่อว่าหน้ายังอยู่ระหว่างโหลดและไม่ได้ค้าง
+ */
 export function SkeletonValue({ className = "" }) {
   return (
     <span
@@ -7,6 +11,10 @@ export function SkeletonValue({ className = "" }) {
   );
 }
 
+/**
+ * สร้างแถวจำลองของตาราง admin ตามจำนวน rows และ columns ที่รับเข้ามา
+ * แต่ละคอลัมน์ใช้ความกว้างต่างกันเพื่อเลียนแบบข้อมูลจริงในตาราง
+ */
 export function TableSkeletonRows({ columns, rows = 5 }) {
   return Array.from({ length: rows }, (_, rowIndex) => (
     <tr key={rowIndex} aria-hidden="true">

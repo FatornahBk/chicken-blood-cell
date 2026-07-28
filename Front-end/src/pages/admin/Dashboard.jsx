@@ -16,15 +16,18 @@ import {
   TableSkeletonRows,
 } from "../../components/AdminSkeleton";
 
+// รองรับชื่อ field วันที่หลายรูปแบบ เผื่อ response แต่ละเวอร์ชันใช้ key ต่างกัน
 const submittedAt = (user) =>
   user.created_at ?? user.createdAt ?? user.submitted_at ?? user.submittedAt;
 
+// สร้างชื่อเต็ม และ fallback เป็น name/email เมื่อชื่อหรือนามสกุลไม่มีข้อมูล
 const nameOf = (user) =>
   `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() ||
   user.name ||
   user.email ||
   "-";
 
+// config ของการ์ดสถิติ ช่วยให้ render การ์ดทั้งสี่ใบจากโครงสร้างเดียวกัน
 const statCards = [
   ["Total Users", "totalUsers", Users, "text-blue-600", "bg-blue-50"],
   [
@@ -50,6 +53,10 @@ const statCards = [
   ],
 ];
 
+/**
+ * เลือกค่าตัวเลขตัวแรกที่ backend ส่งมาและแปลงเป็น Number
+ * ใช้รองรับ response หลายรูปแบบ หากทุกค่าไม่ถูกต้องจะคืน 0
+ */
 const numberFrom = (...values) => {
   const value = values.find(
     (item) => item !== undefined && item !== null && item !== "",
@@ -58,6 +65,10 @@ const numberFrom = (...values) => {
   return Number.isFinite(number) ? number : 0;
 };
 
+/**
+ * ทำงานคล้าย numberFrom แต่คืน null เมื่อไม่มีค่า
+ * null ใช้แยก "backend ไม่ส่ง field" ออกจาก "ค่าจริงเป็น 0"
+ */
 const optionalNumberFrom = (...values) => {
   const value = values.find(
     (item) => item !== undefined && item !== null && item !== "",
@@ -67,7 +78,13 @@ const optionalNumberFrom = (...values) => {
   return Number.isFinite(number) ? number : null;
 };
 
+/**
+ * วาด donut chart สถานะ prediction ด้วย CSS conic-gradient
+ * completed และ pending อาจเป็นจำนวนหรือเปอร์เซ็นต์ แต่ต้องเป็นหน่วยเดียวกัน
+ * component จะคำนวณสัดส่วนและตำแหน่ง label จากสองค่านี้
+ */
 function PredictionStatusChart({ completed, pending }) {
+  // ป้องกันค่าติดลบหรือค่าที่แปลงเป็นตัวเลขไม่ได้ก่อนคำนวณกราฟ
   const completedValue = Math.max(numberFrom(completed), 0);
   const pendingValue = Math.max(numberFrom(pending), 0);
   const total = completedValue + pendingValue;
@@ -75,6 +92,8 @@ function PredictionStatusChart({ completed, pending }) {
   const pendingPercent = total > 0 ? (pendingValue / total) * 100 : 0;
   const formatPercent = (value) =>
     Number.isInteger(value) ? value : value.toFixed(1);
+
+  // แปลงเปอร์เซ็นต์เป็นมุมรอบวงกลม แล้วหาพิกัด label รอบ donut
   const labelPosition = (percent) => {
     const angle = (percent / 100) * Math.PI * 2;
     const radius = 50;
@@ -90,6 +109,8 @@ function PredictionStatusChart({ completed, pending }) {
   const pendingLabelPosition = labelPosition(
     total > 0 ? pendingPercent / 2 : 25,
   );
+
+  // ครอบคลุมกรณีไม่มีข้อมูล มีสถานะเดียว และมีทั้งสองสถานะ
   const chartBackground =
     total === 0
       ? "#e2e8f0"
@@ -141,30 +162,37 @@ function PredictionStatusChart({ completed, pending }) {
 }
 
 function AdminDashboard() {
+  // ตัวเลขที่แสดงในการ์ดสรุปด้านบน
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingVerification: 0,
     completedPredictions: 0,
     pendingPredictions: 0,
   });
+  // ค่าที่ส่งให้ donut chart แยกจาก stats เพื่อรองรับ percentage จาก backend
   const [predictionStatuses, setPredictionStatuses] = useState({
     completed: 0,
     pending: 0,
   });
+  // queue เก็บผู้สมัครล่าสุด ส่วน loading/error ควบคุมสถานะของหน้า
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // ป้องกัน setState หลัง component ถูกถอดระหว่างที่ API ยังทำงาน
     let mounted = true;
     (async () => {
       try {
+        // Dashboard แสดงคิวเพียง 3 คน จึงขอข้อมูลหน้าแรกจาก backend
         const data = await getDashboardUsers({ page: 1, limit: 3 });
         const userStatistics = data.user_statistics ?? {};
         const predictionStatistics = data.prediction_statistics ?? {};
         const predictionStatus = data.prediction_status ?? {};
         const bloodInsights = data.avian_blood_insights ?? {};
         const pendingUsers = data.pending_users_table?.data ?? [];
+
+        // อ่านเปอร์เซ็นต์จาก field สำรอง เพื่อรองรับ response หลายเวอร์ชัน
         const completedPercent = optionalNumberFrom(
           predictionStatus.completed_percentage,
           predictionStatistics.completed_percentage,
@@ -173,6 +201,8 @@ function AdminDashboard() {
           predictionStatus.pending_percentage,
           predictionStatistics.pending_percentage,
         );
+
+        // ถ้ามีจำนวน completed/pending โดยตรง ให้นำมารวมเป็นยอด dataset
         const directBatchTotal =
           data.completed_batches !== undefined ||
           data.pending_batches !== undefined
@@ -205,6 +235,8 @@ function AdminDashboard() {
           predictionStatus.pending,
           predictionStatus.pending_count,
         );
+
+        // ให้ความสำคัญกับ count จริง; คำนวณจาก percentage เฉพาะเมื่อไม่มี count
         const completedPredictions =
           completedCount ??
           (completedPercent === null
@@ -216,6 +248,8 @@ function AdminDashboard() {
             ? 0
             : Math.round((totalDatasets * pendingPercent) / 100));
         if (!mounted) return;
+
+        // สถิติผู้ใช้ใช้ค่าจาก backend และมีชื่อ field สำรองสำหรับ response รุ่นเก่า
         setStats({
           totalUsers: numberFrom(data.total_users, userStatistics.total_users),
           pendingVerification: numberFrom(
@@ -238,6 +272,8 @@ function AdminDashboard() {
             bloodInsights.pending_batches,
           ),
         });
+
+        // กรองผู้ใช้ที่ยังไม่ verified เรียงคนใหม่ก่อน และแสดงสูงสุด 3 คน
         setQueue(
           pendingUsers
             .filter((user) => Number(user.is_verified) === 0)

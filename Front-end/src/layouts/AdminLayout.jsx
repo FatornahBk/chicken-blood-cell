@@ -2,6 +2,11 @@ import { Outlet } from "react-router-dom";
 import SideBarAdmin from "../components/SideBarAdmin";
 import Navbar from "../components/navbar";
 
+/**
+ * Layout กลางของทุก route ฝั่ง admin
+ * Navbar และ Sidebar ใช้ร่วมกันทุกหน้า ส่วน Outlet คือพื้นที่ที่ React Router
+ * นำ Dashboard, Verify User, User Management หรือ Data Management มาแสดง
+ */
 function AdminLayout() {
   return (
     <div className="min-h-screen bg-[url('/src/assets/Background.png')] bg-cover">
