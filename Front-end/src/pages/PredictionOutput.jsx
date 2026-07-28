@@ -61,57 +61,6 @@ function ImagePlaceholder({ size = "sm" }) {
   );
 }
 
-function ImageCard({ item, selected, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left rounded-xl p-2 flex items-center gap-3 transition-all duration-200 border-2 ${
-        selected
-          ? "border-blue-400 bg-blue-50 shadow-md"
-          : "border-transparent bg-white hover:border-blue-200 hover:bg-blue-50/50"
-      }`}
-    >
-      <ImagePlaceholder size="sm" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-blue-700 truncate">
-          {item.id}
-        </p>
-        <p className="text-xs text-gray-500 truncate">
-          Chicken type: {item.chickenType}
-        </p>
-        <p className="text-xs text-gray-500 truncate">
-          Province: {item.province}
-        </p>
-        <p className="text-xs text-gray-500">Age: {item.age}</p>
-        <p className="text-xs text-gray-500">Stain type: {item.stain}</p>
-      </div>
-      {selected && (
-        <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-      )}
-    </button>
-  );
-}
-
-function CellBar({ label, percent, colorClass }) {
-  return (
-    <div className="mb-3">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${colorClass.dot}`} />
-          <span className="text-sm text-gray-700">{label}</span>
-        </div>
-        <span className="text-sm font-bold text-gray-800">{percent}%</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full transition-all duration-700 ${colorClass.bar}`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 const FullscreenCanvas = ({ imageUrl, classes, onClose }) => {
   const [scale, setScale] = useState(1);
@@ -376,28 +325,18 @@ export default function PredictionLogsPage() {
   const { smear, selectedImages, imagePathMap, predictionResult } = state || {};
 
   const imageList = predictionResult?.data ?? [];
+  const summaryData = predictionResult?.summary ?? {};
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedData = imageList[selectedIndex];
+
   const cellCounts = selectedData?.classes ?? {};
-  const grandTotal = Object.values(cellCounts).reduce(
-    (sum, v) => sum + v.count,
-    0,
-  );
-  const caseCellCounts = imageList.reduce((acc, img) => {
-    Object.entries(img.classes ?? {}).forEach(([cls, data]) => {
-      const count = data.detections?.length ?? data.count ?? 0;
-      acc[cls] = (acc[cls] || 0) + count;
-    });
-    return acc;
-  }, {});
+  const grandTotal = selectedData?.total_detections ?? 0;
 
-  const caseTotal = Object.values(caseCellCounts).reduce((s, v) => s + v, 0);
-  const totalImagesInCase = imageList.length;
+  const caseTotal = summaryData?.total_detections ?? 0;
+  const totalImagesInCase = summaryData?.total_images_processed ?? imageList.length;
+  const summaryClasses = summaryData?.classes ?? {};
 
-  const lymphCount = caseCellCounts["Lymphocyte"] || 0;
-  const heteroCount = caseCellCounts["Heterophil"] || 0;
-  const hlRatio =
-    lymphCount > 0 ? (heteroCount / lymphCount).toFixed(2) : "0.00";
   const getImagePathByImageId = (imageId) => {
     if (imageId == null || !imagePathMap) return null;
     return imagePathMap[imageId] ?? null;
@@ -947,10 +886,7 @@ export default function PredictionLogsPage() {
                       {ALL_CLASSES.map((cls) => {
                         const val = cellCounts[cls];
                         const count = val?.count ?? 0;
-                        const pct =
-                          val && grandTotal > 0
-                            ? ((val.count / grandTotal) * 100).toFixed(1)
-                            : "0.0";
+                        const pct = val?.percentage ?? 0; //val?.percentage ? Number(val.percentage).toFixed(1) : "0.0";
                         const color = CELL_COLOR_MAP[cls];
                         return (
                           <div key={cls} className="mb-2">
@@ -1014,11 +950,9 @@ export default function PredictionLogsPage() {
                     </div>
                     <div className="p-4 pt-1">
                       {ALL_CLASSES.map((cls) => {
-                        const count = caseCellCounts[cls] || 0;
-                        const pct =
-                          caseTotal > 0
-                            ? Math.round((count / caseTotal) * 100)
-                            : 0;
+                        const val = summaryClasses[cls];
+                        const count = val?.count ?? 0;
+                        const pct = val?.percentage ?? 0; //val?.percentage ? Math.round(val.percentage) : 0;
                         const color = CELL_COLOR_MAP[cls];
                         return (
                           <div key={cls} className="mb-2">
