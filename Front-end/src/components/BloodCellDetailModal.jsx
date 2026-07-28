@@ -90,12 +90,16 @@ export default function BloodCellDetailModal({
   const doctorId = info.doctorId || info.uploaderId || info.userId || null;
   // The API can provide a URL string or an image object ({ image_path },
   // { image_url }, { url }). Normalize both formats before rendering.
-  const thumbnails = (info.thumbnails || info.images || [])
+  const thumbnails = (info.thumbnails || info.images || info.data || [])
     .map((image) => {
       const path =
         typeof image === "string"
           ? image
-          : image?.url || image?.image_url || image?.image_path || image?.path;
+          : image?.url ||
+            image?.image_url ||
+            image?.image_path ||
+            image?.path ||
+            image?.filename;
 
       if (!path) return null;
       return /^https?:\/\//i.test(path) ? path : getImageUrl(path);
@@ -126,8 +130,9 @@ export default function BloodCellDetailModal({
       ? doctorAvatarPath
       : getImageUrl(doctorAvatarPath)
     : null;
-  const imageDetails = info.imageDetails || [];
-  const activePrediction = imageDetails[activeThumb]?.prediction || null;
+  const imageDetails = info.imageDetails || info.data || [];
+  const activePrediction =
+    imageDetails[activeThumb]?.prediction || imageDetails[activeThumb] || null;
 
   const total = activePrediction
     ? Object.values(activePrediction.cell_counts || {}).reduce(
@@ -138,11 +143,18 @@ export default function BloodCellDetailModal({
 
   const distribution = activePrediction
     ? CELL_ORDER.map((label) => {
-        const count = activePrediction.cell_counts?.[label] || 0;
+        const classObj =
+          activePrediction.classes?.[label] ||
+          activePrediction.prediction?.classes?.[label];
+        const count =
+          classObj?.count ?? activePrediction.cell_counts?.[label] ?? 0;
+        const percent =
+          classObj?.percentage ??
+          (total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0);
         return {
           label,
           count,
-          percent: total > 0 ? (count / total) * 100 : 0,
+          percent,
           color: CELL_COLORS[label] || "#94a3b8",
         };
       })
@@ -156,34 +168,40 @@ export default function BloodCellDetailModal({
         }));
 
   const aggregatedCounts = imageDetails.reduce((acc, img) => {
-    const counts = img?.prediction?.cell_counts || {};
-    Object.entries(counts).forEach(([label, count]) => {
+    const countsObj =
+      img?.classes ||
+      img?.prediction?.classes ||
+      img?.prediction?.cell_counts ||
+      {};
+    Object.entries(countsObj).forEach(([label, val]) => {
+      const count = typeof val === "object" ? val?.count || 0 : val || 0;
       acc[label] = (acc[label] || 0) + count;
     });
     return acc;
   }, {});
 
-  const aggregatedTotal = Object.values(aggregatedCounts).reduce(
-    (sum, c) => sum + c,
-    0,
-  );
+  const aggregatedTotal =
+    info.summary?.total_detections ??
+    info.total_detections ??
+    Object.values(aggregatedCounts).reduce((sum, c) => sum + c, 0);
 
-  const aggregatedDistribution =
-    aggregatedTotal > 0
-      ? Object.entries(aggregatedCounts)
-          .map(([label, count]) => ({
-            label,
-            count,
-            percent: (count / aggregatedTotal) * 100,
-            color: CELL_COLORS[label] || "#94a3b8",
-          }))
-          .sort((a, b) => b.count - a.count)
-      : CELL_ORDER.map((label) => ({
-          label,
-          count: 0,
-          percent: 0,
-          color: CELL_COLORS[label] || "#94a3b8",
-        }));
+  const summaryClasses = info.summary?.classes || info.classes || null;
+
+  const aggregatedDistribution = CELL_ORDER.map((label) => {
+  const classObj = summaryClasses?.[label];
+  const count = classObj?.count ?? aggregatedCounts[label] ?? 0;
+  const percent =
+    classObj?.percentage ??
+    (aggregatedTotal > 0
+      ? Number(((count / aggregatedTotal) * 100).toFixed(2))
+      : 0);
+  return {
+    label,
+    count,
+    percent,
+    color: CELL_COLORS[label] || "#94a3b8",
+  };
+});
 
   const heterophilCount = aggregatedCounts.Heterophil || 0;
   const lymphocyteCount = aggregatedCounts.Lymphocyte || 0;
@@ -374,7 +392,7 @@ export default function BloodCellDetailModal({
                           {cell.count}
                         </span>{" "}
                         <span className="font-normal text-gray-400">
-                          ({cell.percent.toFixed(0)}%)
+                          ({cell.percent}%)
                         </span>
                       </span>
                     </div>
@@ -576,7 +594,7 @@ export default function BloodCellDetailModal({
                           {cell.count}
                         </span>{" "}
                         <span className="font-normal text-gray-400">
-                          ({cell.percent.toFixed(1)}%)
+                          ({cell.percent}%)
                         </span>
                       </span>
                     </div>
