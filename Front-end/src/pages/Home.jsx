@@ -7,6 +7,7 @@ import Footer from "../components/footer";
 import logo from "../assets/Chicken-CBC.png";
 import BloodCellDetailModal from "../components/BloodCellDetailModal";
 import { uploadClient, getImageUrl } from "../services/api";
+import { formatCardDate } from "../utils/formatters";
 
 // ─── Skeleton Component (สำหรับโหลดรอข้อมูลแบบสมูทๆ) ─────────────────────────
 function CardSkeleton() {
@@ -178,11 +179,7 @@ const CardGrid = ({ cards, loading, error, onCardClick }) => {
           age={card.age}
           stainType={card.stainType}
           uploaderName={card.uploaderName}
-          uploaderDate={
-            card.predictedAt
-              ? new Date(card.predictedAt).toLocaleDateString("th-TH")
-              : ""
-          }
+          uploaderDate={formatCardDate(card.predictedAt)}
           avatarUrl={card.uploaderAvatar}
           onClick={(idx) => onCardClick?.(card, idx)}
         />
@@ -234,7 +231,6 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
-    province: null,
     chickenType: "All types",
     startDate: "",
     endDate: "",
@@ -243,7 +239,7 @@ const HomePage = () => {
   });
   const debounceRef = useRef(null);
 
-  const abortRef = useRef(null); // เพิ่ม ref ใหม่ ไว้ข้าง ๆ debounceRef
+  const abortRef = useRef(null);
 
   const fetchCards = useCallback(async (f) => {
     if (abortRef.current) abortRef.current.abort(); // ยกเลิก request เก่าที่ยังค้าง
@@ -254,8 +250,9 @@ const HomePage = () => {
     setError(null);
     try {
       const params = { page: f.page, limit: f.limit };
+
       if (f.search) params.search = f.search;
-      if (f.province) params.province = f.province;
+
       if (f.chickenType && f.chickenType !== "All types") {
         params.chicken_type = f.chickenType;
       }
@@ -268,10 +265,7 @@ const HomePage = () => {
       ]);
 
       const json = apiResponse.data;
-      console.log(
-        "RAW /home/cards response:",
-        JSON.stringify(json.data?.[0], null, 2),
-      );
+      
       const mapped = (json.data ?? []).map(mapCardFromApi);
       setCards(mapped);
       setMeta(
@@ -304,8 +298,7 @@ const HomePage = () => {
   const handleSearch = ({ query, province, chickenType }) => {
     setFilters((prev) => ({
       ...prev,
-      search: query,
-      province: province ?? null,
+      search: province || query || "",
       chickenType: chickenType ?? prev.chickenType,
       page: 1,
     }));
@@ -316,26 +309,36 @@ const HomePage = () => {
   };
 
   const handleFilterProvince = (province) => {
-    setFilters((prev) => ({ ...prev, province: province ?? null, page: 1 }));
+    setFilters((prev) => ({ ...prev, 
+      search: province && province !== "All provinces" ? province : "", 
+      page: 1 }));
   };
 
   const handlePageChange = (page) => {
     setFilters((prev) => ({ ...prev, page }));
   };
 
-  const handleSortChange = (sort) => {
-    setCards((prev) => {
-      const sorted = [...prev];
-      if (sort === "Sort by Status") {
-        const order = ["pending", "completed"];
-        sorted.sort(
-          (a, b) => order.indexOf(a.status) - order.indexOf(b.status),
-        );
-      } else if (sort === "Sort by Province") {
-        sorted.sort((a, b) => a.province.localeCompare(b.province));
-      }
-      return sorted;
-    });
+  const handleSortChange = (range) => {
+    if (!range || (!range.start && !range.end)) {
+      setFilters((prev) => ({ ...prev, startDate: "", endDate: "", page: 1 }));
+      return;
+    }
+    
+    const formatToYYYYMMDD = (date) => {
+      if (!date) return "";
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    setFilters((prev) => ({
+      ...prev,
+      startDate: formatToYYYYMMDD(range.start),
+      endDate: formatToYYYYMMDD(range.end || range.start),
+      page: 1,
+    }));
   };
 
   const handleCardClick = (card, idx = 0) => {
