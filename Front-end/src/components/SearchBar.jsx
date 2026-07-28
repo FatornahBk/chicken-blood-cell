@@ -145,6 +145,7 @@ const CHICKEN_TYPES = ["All types", "Laying hen", "Native chicken"];
 const STAIN_TYPES = ["Wright Stain", "Giemsa Stain"];
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const PROVINCES = [
+  "All provinces",
   "Bangkok",
   "Amnat Charoen",
   "Ang Thong",
@@ -598,7 +599,9 @@ const SearchBar = ({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = () => {
+  const handleSearch = (overrideQuery = null) => {
+    const currentQuery = overrideQuery !== null ? overrideQuery : query;
+
     const resolvedChickenType =
       chickenType === "Chicken type" || chickenType === "All types"
         ? null
@@ -610,13 +613,13 @@ const SearchBar = ({
           ? null
           : province;
       onSearch?.({
-        query,
+        query: currentQuery,
         province: resolvedProvince,
         chickenType: resolvedChickenType,
       });
     } else {
       onSearch?.({
-        query,
+        query: currentQuery,
         chickenType: resolvedChickenType,
         stainType,
         dateRange,
@@ -663,8 +666,10 @@ const SearchBar = ({
             value={query}
             onChange={
               (e) => {
-                setQuery(e.target.value); 
-                onChange?.(e.target.value);
+                const val = e.target.value;
+                setQuery(val); 
+                onChange?.(val);
+                handleSearch(val);
               }
             }
             onKeyDown={handleKeyDown}
@@ -688,7 +693,8 @@ const SearchBar = ({
           value={province}
           onChange={(val) => {
             setProvince(val);
-            onFilterProvince?.(val === "All provinces" ? null : val);
+            const resolvedProv = (val === "All provinces" || val === "Province") ? null : val;
+            onFilterProvince?.(resolvedProv);
           }}
         />
       )}

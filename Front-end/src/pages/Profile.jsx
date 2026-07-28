@@ -6,6 +6,7 @@ import Footer from "../components/footer";
 import SearchBar from "../components/SearchBar";
 import BloodCellCard from "../components/BloodCellCard";
 import BloodCellDetailModal from "../components/BloodCellDetailModal";
+import { formatCardDate } from "../utils/formatters";
 
 // ─── Skeleton Components (สำหรับโหลดรอข้อมูลแบบสมูทๆ) ───────────────────────
 function CardSkeleton() {
@@ -728,13 +729,7 @@ export default function ProfilePage() {
                       age={batch.age}
                       stainType={batch.stain_type}
                       uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                      uploaderDate={new Date(
-                        batch.created_at,
-                      ).toLocaleDateString("th-TH", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      uploaderDate={formatCardDate(batch.predicted_at)}
                       avatarUrl={
                         batch.owner?.profile_image
                           ? getImageUrl(batch.owner.profile_image)
@@ -794,13 +789,7 @@ export default function ProfilePage() {
                       age={batch.age}
                       stainType={batch.stain_type}
                       uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                      uploaderDate={new Date(
-                        batch.created_at,
-                      ).toLocaleDateString("th-TH", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      uploaderDate={formatCardDate(batch.created_at)}
                       avatarUrl={
                         batch.owner?.profile_image
                           ? getImageUrl(batch.owner.profile_image)
@@ -845,10 +834,7 @@ export default function ProfilePage() {
                     age={batch.age}
                     stainType={batch.stain_type}
                     uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                    uploaderDate={new Date(batch.created_at).toLocaleDateString(
-                      "th-TH",
-                      { day: "numeric", month: "short", year: "numeric" },
-                    )}
+                    uploaderDate={formatCardDate(batch.created_at)}
                     avatarUrl={
                       batch.owner?.profile_image
                         ? getImageUrl(batch.owner.profile_image)
