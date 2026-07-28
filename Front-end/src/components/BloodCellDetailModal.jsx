@@ -146,7 +146,14 @@ export default function BloodCellDetailModal({
           color: CELL_COLORS[label] || "#94a3b8",
         };
       })
-    : info.distribution || [];
+    : info.distribution && info.distribution.length > 0
+      ? info.distribution
+      : CELL_ORDER.map((label) => ({
+          label,
+          count: 0,
+          percent: 0,
+          color: CELL_COLORS[label] || "#94a3b8",
+        }));
 
   const aggregatedCounts = imageDetails.reduce((acc, img) => {
     const counts = img?.prediction?.cell_counts || {};
@@ -161,14 +168,22 @@ export default function BloodCellDetailModal({
     0,
   );
 
-  const aggregatedDistribution = Object.entries(aggregatedCounts)
-    .map(([label, count]) => ({
-      label,
-      count,
-      percent: aggregatedTotal > 0 ? (count / aggregatedTotal) * 100 : 0,
-      color: CELL_COLORS[label] || "#94a3b8",
-    }))
-    .sort((a, b) => b.count - a.count);
+  const aggregatedDistribution =
+    aggregatedTotal > 0
+      ? Object.entries(aggregatedCounts)
+          .map(([label, count]) => ({
+            label,
+            count,
+            percent: (count / aggregatedTotal) * 100,
+            color: CELL_COLORS[label] || "#94a3b8",
+          }))
+          .sort((a, b) => b.count - a.count)
+      : CELL_ORDER.map((label) => ({
+          label,
+          count: 0,
+          percent: 0,
+          color: CELL_COLORS[label] || "#94a3b8",
+        }));
 
   const heterophilCount = aggregatedCounts.Heterophil || 0;
   const lymphocyteCount = aggregatedCounts.Lymphocyte || 0;
@@ -342,42 +357,38 @@ export default function BloodCellDetailModal({
                   </div>
                 </div>
 
-                {aggregatedDistribution.length === 0 ? (
-                  <p className="text-slate-400 text-xs">No summary data</p>
-                ) : (
-                  aggregatedDistribution.map((cell) => (
-                    <div key={cell.label} className="mb-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ background: cell.color }}
-                          />
-                          <span className="text-sm text-gray-700">
-                            {cell.label}
-                          </span>
-                        </div>
-                        <span className="text-sm">
-                          <span className="font-semibold text-gray-500">
-                            {cell.count}
-                          </span>{" "}
-                          <span className="font-normal text-gray-400">
-                            ({cell.percent.toFixed(0)}%)
-                          </span>
+                {aggregatedDistribution.map((cell) => (
+                  <div key={cell.label} className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: cell.color }}
+                        />
+                        <span className="text-sm text-gray-700">
+                          {cell.label}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full transition-all duration-700"
-                          style={{
-                            width: `${cell.percent}%`,
-                            background: cell.color,
-                          }}
-                        />
-                      </div>
+                      <span className="text-sm">
+                        <span className="font-semibold text-gray-500">
+                          {cell.count}
+                        </span>{" "}
+                        <span className="font-normal text-gray-400">
+                          ({cell.percent.toFixed(0)}%)
+                        </span>
+                      </span>
                     </div>
-                  ))
-                )}
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{
+                          width: `${cell.percent}%`,
+                          background: cell.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
 
                 <div className="mt-auto pt-2 border-t border-dashed border-gray-200">
                   <p className="text-[10px] text-slate-400 leading-relaxed">
@@ -487,22 +498,25 @@ export default function BloodCellDetailModal({
                 <img
                   src={doctorAvatar}
                   alt="doctor"
-                  className="w-10 h-10 rounded-full object-cover ring-blue-200"
+                  className="w-10 h-10 rounded-full object-cover"
                   onError={(e) => {
                     e.target.style.display = "none";
                   }}
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-100 ring-blue-200 flex items-center justify-center text-blue-600 text-xs font-bold">
-                  {doctorName
-                    ? doctorName
-                        .trim()
-                        .split(/\s+/)
-                        .map((w) => w[0])
-                        .slice(0, 2)
-                        .join("")
-                        .toUpperCase()
-                    : "Dr"}
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold"
+                  style={{ background: "#b8d4e8", color: "#1a3a5c" }}
+                >
+                  {(() => {
+                    const parts = doctorName
+                      ? doctorName.trim().split(/\s+/)
+                      : [];
+                    if (parts.length === 0) return "Dr";
+                    return parts.length >= 2
+                      ? (parts[0][0] || "") + (parts[parts.length - 1][0] || "")
+                      : parts[0][0] || "";
+                  })()}
                 </div>
               )}
               <div>
@@ -545,42 +559,38 @@ export default function BloodCellDetailModal({
               </div>
 
               <div className="p-4 flex-1 flex flex-col justify-center">
-                {distribution.length === 0 ? (
-                  <p className="text-slate-400 text-xs">No distribution data</p>
-                ) : (
-                  distribution.map((cell) => (
-                    <div key={cell.label} className="mb-2">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ background: cell.color }}
-                          />
-                          <span className="text-xs text-gray-700">
-                            {cell.label}
-                          </span>
-                        </div>
-                        <span className="text-xs">
-                          <span className="font-semibold text-gray-500">
-                            {cell.count}
-                          </span>{" "}
-                          <span className="font-normal text-gray-400">
-                            ({cell.percent.toFixed(1)}%)
-                          </span>
+                {distribution.map((cell) => (
+                  <div key={cell.label} className="mb-2">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: cell.color }}
+                        />
+                        <span className="text-xs text-gray-700">
+                          {cell.label}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full transition-all duration-700"
-                          style={{
-                            width: `${cell.percent}%`,
-                            background: cell.color,
-                          }}
-                        />
-                      </div>
+                      <span className="text-xs">
+                        <span className="font-semibold text-gray-500">
+                          {cell.count}
+                        </span>{" "}
+                        <span className="font-normal text-gray-400">
+                          ({cell.percent.toFixed(1)}%)
+                        </span>
+                      </span>
                     </div>
-                  ))
-                )}
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{
+                          width: `${cell.percent}%`,
+                          background: cell.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Total */}

@@ -104,13 +104,16 @@ function ProfileBanner({ user, onSave, saving }) {
         style={{
           background:
             "linear-gradient(to right, #deeaf5 0%, #b8d4ec 40%, #5a8fbf 75%, #3a7aad 100%)",
-          paddingLeft: "116px",
+          paddingLeft: "124px",
           paddingBottom: "2px",
-          minHeight: "92px",
+          height: "76px",
         }}
       >
         {isEditing ? (
-          <div className="flex-1 max-w-md flex gap-2">
+          <div
+            className="flex-1 max-w-md flex gap-2"
+            style={{ marginBottom: "-24px", position: "relative", zIndex: 5 }}
+          >
             <div className="flex-1">
               <label
                 className="text-[13px] font-semibold tracking-wide"
@@ -123,7 +126,7 @@ function ProfileBanner({ user, onSave, saving }) {
                 value={firstName}
                 maxLength={maxLen}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full text-sm font-medium rounded-md px-2 py-1 border-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-sm font-medium rounded-md px-2 py-1 border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="First name"
                 style={{ color: "#1a2f45" }}
               />
@@ -140,7 +143,8 @@ function ProfileBanner({ user, onSave, saving }) {
                 value={lastName}
                 maxLength={maxLen}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full text-sm font-medium rounded-md px-2 py-1 border-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-sm font-medium rounded-md px-2 py-1 border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="First name"
                 placeholder="Last name"
                 style={{ color: "#1a2f45" }}
               />
@@ -156,17 +160,21 @@ function ProfileBanner({ user, onSave, saving }) {
 
       {/* ส่วนล่าง: ขาว */}
       <div
-        className="rounded-b-xl bg-white py-3 px-6"
-        style={{ paddingLeft: "116px", minHeight: "72px" }}
+        className="rounded-b-xl bg-white py-2.5 px-6"
+        style={{ paddingLeft: "124px", minHeight: "60px" }}
       >
-        {!isEditing && (
-          <p className="text-sm mb-2 -mt-2" style={{ color: "#6b8ca8" }}>
-            {user.email}
-          </p>
-        )}
+        <p
+          className="text-sm mb-2 -mt-2"
+          style={{
+            color: "#6b8ca8",
+            visibility: isEditing ? "hidden" : "visible",
+          }}
+        >
+          {user.email || "\u00A0"}
+        </p>
         <div
           className={`flex gap-2 items-center ${isEditing ? "" : "justify-between"}`}
-          style={{ minHeight: isEditing ? "72px" : "auto" }}
+          style={{ minHeight: "72px" }}
         >
           {isEditing ? (
             <>
@@ -242,7 +250,7 @@ function ProfileBanner({ user, onSave, saving }) {
       <div
         className="absolute rounded-full bg-white flex items-center justify-center"
         style={{
-          left: "20px",
+          left: "24px",
           top: "50%",
           transform: "translateY(-50%)",
           width: "80px",
@@ -295,7 +303,7 @@ function ProfileBanner({ user, onSave, saving }) {
           />
         ) : (
           <div
-            className="rounded-full flex items-center justify-center text-xl font-semibold"
+            className="rounded-full flex items-center justify-center text-lg font-semibold"
             style={{
               width: "66px",
               height: "66px",
@@ -403,6 +411,42 @@ const mapBatchToCard = (batch) => {
   };
 };
 
+function Pagination({ page, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex justify-center items-center gap-2 mt-4">
+      <button
+        onClick={() => onPageChange(page - 1)}
+        disabled={page === 1}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 disabled:opacity-40 text-lg hover:bg-gray-50 transition-colors"
+      >
+        ‹
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+            p === page
+              ? "bg-slate-800 text-white"
+              : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        onClick={() => onPageChange(page + 1)}
+        disabled={page === totalPages}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 disabled:opacity-40 text-lg hover:bg-gray-50 transition-colors"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
 // ─── Profile Page ─────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const [user, setUser] = useState(() => {
@@ -427,10 +471,20 @@ export default function ProfilePage() {
   });
   const [predicted, setPredicted] = useState([]);
   const [unpredicted, setUnpredicted] = useState([]);
+  const [suspended, setSuspended] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPredicted, setShowPredicted] = useState(true);
   const [showUnpredicted, setShowUnpredicted] = useState(true);
+  const [showSuspended, setShowSuspended] = useState(true);
+
+  const [predictedPage, setPredictedPage] = useState(1);
+  const [unpredictedPage, setUnpredictedPage] = useState(1);
+  const [suspendedPage, setSuspendedPage] = useState(1);
+
+  const [predictedTotalPages, setPredictedTotalPages] = useState(1);
+  const [unpredictedTotalPages, setUnpredictedTotalPages] = useState(1);
+  const [suspendedTotalPages, setSuspendedTotalPages] = useState(1);
 
   const navigate = useNavigate();
   const [selectedCard, setSelectedCard] = useState(null);
@@ -453,7 +507,12 @@ export default function ProfilePage() {
   };
 
   const buildParams = useCallback(() => {
-    const params = { page: 1, limit: 10 };
+    const params = {
+      completedPage: predictedPage,
+      pendingPage: unpredictedPage,
+      suspendedPage: suspendedPage,
+      limit: 10,
+    };
     if (query) params.smear_id = query;
     if (chickenType) params.chicken_type = chickenType;
     const stain = normalizeStainType(stainType);
@@ -465,7 +524,15 @@ export default function ProfilePage() {
       params.endDate = end.toISOString().slice(0, 10);
     }
     return params;
-  }, [query, chickenType, stainType, dateRange]);
+  }, [
+    query,
+    chickenType,
+    stainType,
+    dateRange,
+    predictedPage,
+    unpredictedPage,
+    suspendedPage,
+  ]);
 
   const fetchProfileAndBatches = useCallback(async () => {
     setLoading(true);
@@ -486,13 +553,20 @@ export default function ProfilePage() {
         role: profile?.role ?? "",
         totalCompletedBatches: profile?.total_completed_batches ?? 0,
         totalPendingBatches: profile?.total_pending_batches ?? 0,
+        totalSuspendedBatches: profile?.total_suspended_batches ?? 0, // ★ เพิ่มบรรทัดนี้
         avatarUrl: profile?.profile_image
           ? getImageUrl(profile.profile_image)
           : null,
       });
 
       setPredicted(data?.completed_batches?.items ?? []);
+      setPredictedTotalPages(data?.completed_batches?.meta?.total_pages ?? 1);
+
       setUnpredicted(data?.pending_batches?.items ?? []);
+      setUnpredictedTotalPages(data?.pending_batches?.meta?.total_pages ?? 1);
+
+      setSuspended(data?.suspended_batches?.items ?? []);
+      setSuspendedTotalPages(data?.suspended_batches?.meta?.total_pages ?? 1);
     } catch (err) {
       console.error("Failed to fetch profile:", err);
     } finally {
@@ -572,22 +646,7 @@ export default function ProfilePage() {
   const handleDeleteBatch = async (batchId) => {
     try {
       await uploadClient.delete(`/profile/batches/${batchId}`);
-
-      const wasInPredicted = predicted.some((b) => b.batch_id === batchId);
-      const wasInUnpredicted = unpredicted.some((b) => b.batch_id === batchId);
-
-      setPredicted((prev) => prev.filter((b) => b.batch_id !== batchId));
-      setUnpredicted((prev) => prev.filter((b) => b.batch_id !== batchId));
-
-      setUser((prev) => ({
-        ...prev,
-        totalCompletedBatches: wasInPredicted
-          ? Math.max(0, (prev.totalCompletedBatches || 0) - 1)
-          : prev.totalCompletedBatches,
-        totalPendingBatches: wasInUnpredicted
-          ? Math.max(0, (prev.totalPendingBatches || 0) - 1)
-          : prev.totalPendingBatches,
-      }));
+      await fetchProfileAndBatches();
     } catch (err) {
       console.error("Failed to delete batch:", err);
     }
@@ -596,24 +655,7 @@ export default function ProfilePage() {
   const handleDeletePrediction = async (batchId) => {
     try {
       await uploadClient.delete(`/profile/batches/${batchId}/predictions`);
-
-      // ย้าย batch จาก predicted -> unpredicted (ภาพยังอยู่ แค่เปลี่ยนสถานะ)
-      setPredicted((prev) => {
-        const batch = prev.find((b) => b.batch_id === batchId);
-        if (batch) {
-          setUnpredicted((up) => [{ ...batch, status: "pending" }, ...up]);
-        }
-        return prev.filter((b) => b.batch_id !== batchId);
-      });
-
-      setUser((prev) => ({
-        ...prev,
-        totalCompletedBatches: Math.max(
-          0,
-          (prev.totalCompletedBatches || 0) - 1,
-        ),
-        totalPendingBatches: (prev.totalPendingBatches || 0) + 1,
-      }));
+      await fetchProfileAndBatches();
     } catch (err) {
       console.error("Failed to delete prediction:", err);
     }
@@ -633,13 +675,24 @@ export default function ProfilePage() {
             setChickenType(chickenType);
             setStainType(stainType);
             setDateRange(dateRange?.start ? dateRange : null);
+            setPredictedPage(1);
+            setUnpredictedPage(1);
+            setSuspendedPage(1);
           }}
-          onFilterChickenType={(val) =>
+          onFilterChickenType={(val) => {
             setChickenType(
               val === "Chicken type" || val === "All types" ? null : val,
-            )
-          }
-          onSortChange={(range) => setDateRange(range)}
+            );
+            setPredictedPage(1);
+            setUnpredictedPage(1);
+            setSuspendedPage(1);
+          }}
+          onSortChange={(range) => {
+            setDateRange(range);
+            setPredictedPage(1);
+            setUnpredictedPage(1);
+            setSuspendedPage(1);
+          }}
         />
 
         {/* Predicted Items */}
@@ -659,39 +712,49 @@ export default function ProfilePage() {
             ) : predicted.length === 0 ? (
               <p className="text-sm text-gray-400">No predicted items found.</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {predicted.map((batch) => (
-                  <BloodCellCard
-                    key={batch.batch_id}
-                    images={(batch.images ?? []).map((img) =>
-                      getImageUrl(img.image_path),
-                    )}
-                    title={batch.description}
-                    status={batch.status}
-                    issueId={batch.smear_id}
-                    chickenType={batch.chicken_type}
-                    province={batch.province}
-                    age={batch.age}
-                    stainType={batch.stain_type}
-                    uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
-                    uploaderDate={new Date(batch.created_at).toLocaleDateString(
-                      "th-TH",
-                      { day: "numeric", month: "short", year: "numeric" },
-                    )}
-                    avatarUrl={
-                      batch.owner?.profile_image
-                        ? getImageUrl(batch.owner.profile_image)
-                        : null
-                    }
-                    onClick={(idx) => handleCardClick(batch, idx)}
-                    onDelete={() => handleDeleteBatch(batch.batch_id)}
-                    onDeletePrediction={() =>
-                      handleDeletePrediction(batch.batch_id)
-                    }
-                    hasPrediction={true}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {predicted.map((batch) => (
+                    <BloodCellCard
+                      key={batch.batch_id}
+                      images={(batch.images ?? []).map((img) =>
+                        getImageUrl(img.image_path),
+                      )}
+                      title={batch.description}
+                      status={batch.status}
+                      issueId={batch.smear_id}
+                      chickenType={batch.chicken_type}
+                      province={batch.province}
+                      age={batch.age}
+                      stainType={batch.stain_type}
+                      uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
+                      uploaderDate={new Date(
+                        batch.created_at,
+                      ).toLocaleDateString("th-TH", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                      avatarUrl={
+                        batch.owner?.profile_image
+                          ? getImageUrl(batch.owner.profile_image)
+                          : null
+                      }
+                      onClick={(idx) => handleCardClick(batch, idx)}
+                      onDelete={() => handleDeleteBatch(batch.batch_id)}
+                      onDeletePrediction={() =>
+                        handleDeletePrediction(batch.batch_id)
+                      }
+                      hasPrediction={true}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={predictedPage}
+                  totalPages={predictedTotalPages}
+                  onPageChange={setPredictedPage}
+                />
+              </>
             )}
           </Collapsible>
         </section>
@@ -715,8 +778,60 @@ export default function ProfilePage() {
                 No unpredicted items found.
               </p>
             ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {unpredicted.map((batch) => (
+                    <BloodCellCard
+                      key={batch.batch_id}
+                      images={(batch.images ?? []).map((img) =>
+                        getImageUrl(img.image_path),
+                      )}
+                      title={batch.description}
+                      status={batch.status}
+                      issueId={batch.smear_id}
+                      chickenType={batch.chicken_type}
+                      province={batch.province}
+                      age={batch.age}
+                      stainType={batch.stain_type}
+                      uploaderName={`${batch.owner?.first_name ?? ""} ${batch.owner?.last_name ?? ""}`.trim()}
+                      uploaderDate={new Date(
+                        batch.created_at,
+                      ).toLocaleDateString("th-TH", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                      avatarUrl={
+                        batch.owner?.profile_image
+                          ? getImageUrl(batch.owner.profile_image)
+                          : null
+                      }
+                      onClick={(idx) => handleCardClick(batch, idx)}
+                      onDelete={() => handleDeleteBatch(batch.batch_id)}
+                      hasPrediction={false}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={unpredictedPage}
+                  totalPages={unpredictedTotalPages}
+                  onPageChange={setUnpredictedPage}
+                />
+              </>
+            )}
+          </Collapsible>
+        </section>
+        {/* ★ Suspended Items — โชว์เฉพาะตอนมีโพสโดนระงับเท่านั้น ★ */}
+        {!loading && suspended.length > 0 && (
+          <section className="mt-8">
+            <SectionHeader
+              title="Post Suspended"
+              open={showSuspended}
+              onToggle={() => setShowSuspended((v) => !v)}
+            />
+            <Collapsible open={showSuspended}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {unpredicted.map((batch) => (
+                {suspended.map((batch) => (
                   <BloodCellCard
                     key={batch.batch_id}
                     images={(batch.images ?? []).map((img) =>
@@ -740,14 +855,18 @@ export default function ProfilePage() {
                         : null
                     }
                     onClick={(idx) => handleCardClick(batch, idx)}
-                    onDelete={() => handleDeleteBatch(batch.batch_id)}
                     hasPrediction={false}
                   />
                 ))}
               </div>
-            )}
-          </Collapsible>
-        </section>
+              <Pagination
+                page={suspendedPage}
+                totalPages={suspendedTotalPages}
+                onPageChange={setSuspendedPage}
+              />
+            </Collapsible>
+          </section>
+        )}
       </main>
       {selectedCard && (
         <BloodCellDetailModal

@@ -24,15 +24,14 @@ function getInitials(name = "") {
 function Avatar({ name, profileImage }) {
   if (profileImage) {
     return (
-      <img
-        src={profileImage}
-        alt={name}
-        className="w-8 h-8 rounded-full object-cover"
-      />
+      <img src={profileImage} alt={name} className="w-8 h-8 rounded-full object-cover" />
     );
   }
   return (
-    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-semibold select-none">
+    <div
+      className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold select-none"
+      style={{ background: "#b8d4e8", color: "#1a3a5c" }}
+    >
       {getInitials(name)}
     </div>
   );

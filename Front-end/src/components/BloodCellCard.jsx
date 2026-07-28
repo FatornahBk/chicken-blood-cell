@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 const STATUS_STYLES = {
   completed: "bg-green-100 text-green-700",
   pending: "bg-yellow-100 text-yellow-700",
+  suspended: "bg-red-100 text-red-700",
 };
 
 const BloodCellCard = ({
@@ -43,7 +44,7 @@ const BloodCellCard = ({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmType, setConfirmType] = useState(null); 
+  const [confirmType, setConfirmType] = useState(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -218,7 +219,10 @@ const BloodCellCard = ({
                 className="w-7 h-7 rounded-full object-cover ring-blue-200"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-600 ring-blue-200">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ring-blue-200"
+                style={{ background: "#b8d4e8", color: "#1a3a5c" }}
+              >
                 {initials}
               </div>
             )}
@@ -277,17 +281,17 @@ const BloodCellCard = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-white rounded-2xl shadow-xl w-96 p-6">
-              <p className="text-base font-semibold text-gray-800 mb-1.5">
+              <p className="text-base font-semibold text-gray-800 mb-3">
                 {confirmType === "prediction"
                   ? "Are you sure you want to delete this prediction?"
                   : "Are you sure you want to delete this post?"}
               </p>
-              <p className="text-sm text-gray-500 mb-4">
+              <div className="border-t border-gray-200 -mx-6 mb-3" />
+              <p className="text-sm text-gray-500 mb-6">
                 {confirmType === "prediction"
                   ? "The images will be kept and moved to pending status."
                   : "This action cannot be undone."}
               </p>
-              <div className="border-t border-gray-200 -mx-6 mb-4" />
               <div className="flex justify-end gap-3">
                 <button
                   className="text-sm font-medium px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100"

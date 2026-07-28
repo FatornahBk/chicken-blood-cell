@@ -31,6 +31,42 @@ function CardSkeleton() {
   );
 }
 
+const CELL_LABELS = [
+  "Heterophil",
+  "Eosinophil",
+  "Basophil",
+  "Lymphocyte",
+  "Monocyte",
+  "Thrombocyte",
+];
+
+const transformPrediction = (prediction) => {
+  if (!prediction) return null;
+  const classes = prediction.classes || {};
+
+  const cell_counts = {};
+  const cell_percentages = {};
+  CELL_LABELS.forEach((label) => {
+    cell_counts[label] = classes[label]?.count ?? 0;
+    cell_percentages[label] = classes[label]?.percentage ?? 0;
+  });
+
+  const detections = (prediction.detections ?? []).map((d) => ({
+    bbox: {
+      x1: d.x1,
+      y1: d.y1,
+      x2: d.x2,
+      y2: d.y2,
+      width: d.width ?? d.x2 - d.x1,
+      height: d.height ?? d.y2 - d.y1,
+    },
+    class_name: d.class_name,
+    confidence: d.confidence,
+  }));
+
+  return { cell_counts, cell_percentages, detections };
+};
+
 const mapCardFromApi = (item) => {
   const images = item.images ?? [];
 
@@ -41,7 +77,7 @@ const mapCardFromApi = (item) => {
     imageDetails: images.map((img) => ({
       url: getImageUrl(img.image_path),
       totalCells: img.total_cells_in_image ?? null,
-      prediction: img.prediction ?? null,
+      prediction: transformPrediction(img.prediction),
     })),
     title: item.description ?? "",
     status: item.status ?? "",
@@ -232,6 +268,10 @@ const HomePage = () => {
       ]);
 
       const json = apiResponse.data;
+      console.log(
+        "RAW /home/cards response:",
+        JSON.stringify(json.data?.[0], null, 2),
+      );
       const mapped = (json.data ?? []).map(mapCardFromApi);
       setCards(mapped);
       setMeta(
