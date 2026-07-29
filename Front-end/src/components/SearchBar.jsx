@@ -142,7 +142,7 @@ const StainIcon = () => (
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHICKEN_TYPES = ["All types", "Laying hen", "Native chicken"];
-const STAIN_TYPES = ["Wright Stain", "Giemsa Stain"];
+const STAIN_TYPES = ["All types", "Wright Stain", "Giemsa Stain"];
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const PROVINCES = [
   "All provinces",
@@ -569,6 +569,7 @@ const SearchBar = ({
   onChange,
   onFilterProvince,
   onFilterChickenType,
+  onFilterStainType,
   onSortChange,
   className = "",
 }) => {
@@ -607,6 +608,11 @@ const SearchBar = ({
         ? null
         : chickenType;
 
+    const resolvedStainType =
+      stainType === "Stain Type" || stainType === "All types"
+        ? null
+        : stainType;
+
     if (isHome) {
       const resolvedProvince =
         province === "Province" || province === "All provinces"
@@ -621,7 +627,7 @@ const SearchBar = ({
       onSearch?.({
         query: currentQuery,
         chickenType: resolvedChickenType,
-        stainType,
+        stainType: resolvedStainType,
         dateRange,
       });
     }
@@ -718,7 +724,10 @@ const SearchBar = ({
         icon={<StainIcon />}
           options={STAIN_TYPES}
           value={stainType}
-          onChange={setStainType}
+          onChange={(val) => {
+            setStainType(val);
+            onFilterStainType?.(val);
+          }}
         />
       )}
 

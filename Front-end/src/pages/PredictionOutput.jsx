@@ -827,10 +827,10 @@ export default function PredictionLogsPage() {
                       key={i}
                       ref={(el) => (thumbRefs.current[i] = el)}
                       onClick={() => setSelectedIndex(i)}
-                      className={`w-28 h-24 shrink-0 rounded-md overflow-hidden border-2 transition-colors ${
+                      className={`w-28 h-24 shrink-0 rounded-md overflow-hidden border-2 transition-colors duration-150 cursor-pointer ${
                         selectedIndex === i
-                          ? "border-gray-300"
-                          : "border-transparent"
+                          ? "border-blue-500 ring-2 ring-blue-300 opacity-100 shadow-md"
+                          : "border-transparent opacity-70 hover:opacity-100 hover:border-blue-400"
                       }`}
                     >
                       <img
