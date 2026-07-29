@@ -344,7 +344,7 @@ function AdminDataManagement() {
     };
 
     setStartDate(toApiDate(range?.start));
-    setEndDate(toApiDate(range?.end));
+    setEndDate(toApiDate(range?.end || range?.start));
     setPage(1);
   };
 

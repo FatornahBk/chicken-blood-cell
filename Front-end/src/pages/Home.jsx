@@ -53,7 +53,7 @@ const transformPrediction = (prediction) => {
   });
 
   const detections = (prediction.detections ?? []).map((d) => ({
-    bbox: {
+    bbox: d.bbox ? d.bbox : {
       x1: d.x1,
       y1: d.y1,
       x2: d.x2,

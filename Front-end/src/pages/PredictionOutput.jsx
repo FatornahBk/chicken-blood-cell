@@ -845,9 +845,9 @@ export default function PredictionLogsPage() {
           </div>
 
           {/* ── Column 3: Detail panel ── */}
-          <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          <div className="w-[300px] shrink-0 flex flex-col gap-3 h-full [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             {/* Description card */}
-            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden shrink-0">
               <div className="flex items-center px-4 py-2 bg-blue-500 rounded-t-lg">
                 <h3 className="font-bold text-white text-sm">Description</h3>
               </div>
@@ -863,7 +863,7 @@ export default function PredictionLogsPage() {
             </div>
 
             {/* Cell Distribution card */}
-            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex flex-col">
+            <div className="bg-white/80 backdrop-blur rounded-xl shadow-sm border border-blue-100 overflow-hidden flex flex-col flex-1">
               <div className="flex bg-blue-500 rounded-t-lg overflow-hidden shrink-0">
                 <button
                   onClick={() => setResultTab("perImage")}
@@ -879,7 +879,7 @@ export default function PredictionLogsPage() {
                 </button>
               </div>
 
-              <div className="min-h-[310px] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+              <div className="flex-1 overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 {resultTab === "perImage" && (
                   <>
                     <div className="p-4 pt-6">

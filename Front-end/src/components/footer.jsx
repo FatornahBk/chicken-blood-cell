@@ -33,7 +33,7 @@ const Footer = () => {
 
       <div className="mt-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <span className="text-xs text-gray-400">
-          ©2024 ChickLab. All rights reserved.
+          ©2026 Avian Blood. All rights reserved.
         </span>
         <span className="text-xs text-gray-400">
           Prediction results are for educational purposes only.

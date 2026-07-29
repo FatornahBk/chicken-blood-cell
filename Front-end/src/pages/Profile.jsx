@@ -512,7 +512,7 @@ export default function ProfilePage() {
       completedPage: predictedPage,
       pendingPage: unpredictedPage,
       suspendedPage: suspendedPage,
-      limit: 10,
+      limit: 12,
     };
 
     if (query?.trim()) params.smear_id = query.trim();

@@ -3,9 +3,9 @@ export const formatCardDate = (dateString) => {
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return "";
   
-  const day = String(d.getDate()).padStart(2, "0");       // วันที่ 2 หลัก (01-31)
-  const month = String(d.getMonth() + 1).padStart(2, "0"); // เดือน 2 หลัก (01-12)
-  const year = d.getFullYear();                           // ปี ค.ศ. 4 หลัก (เช่น 2026)
-  
-  return `${day}/${month}/${year}`;
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",   
+    month: "short",    
+    year: "numeric",   
+  });
 };

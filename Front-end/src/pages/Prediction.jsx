@@ -150,7 +150,7 @@ const Prediction = () => {
               ? searchChickenType
               : undefined,
           startDate: formatDate(searchDateRange.start),
-          endDate: formatDate(searchDateRange.end),
+          endDate: formatDate(searchDateRange.end || searchDateRange.start),
         });
 
         const [result] = await Promise.all([apiCall, minLoadingTime]);

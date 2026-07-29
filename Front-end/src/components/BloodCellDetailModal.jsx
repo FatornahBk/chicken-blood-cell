@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getImageUrl } from "../services/api";
+import { formatCardDate } from "../utils/formatters";
 
 const CELL_COLORS = {
   Basophil: "#9b5de5",
@@ -111,12 +112,10 @@ export default function BloodCellDetailModal({
       : info.title && info.title !== "-"
         ? info.title
         : "";
-  const doctorDate =
-    info.doctorDate ||
-    info.uploaderDate ||
-    (info.predictedAt
-      ? new Date(info.predictedAt).toLocaleDateString("th-TH")
-      : "");
+
+  const rawDate = info.doctorDate || info.uploaderDate || info.predictedAt || "";
+  const doctorDate = formatCardDate(rawDate);
+
   const doctorAvatarPath =
     info.doctorAvatar ||
     info.uploaderAvatar ||
