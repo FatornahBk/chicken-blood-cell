@@ -231,6 +231,7 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
+    province: null,
     chickenType: "All types",
     startDate: "",
     endDate: "",
@@ -252,6 +253,9 @@ const HomePage = () => {
       const params = { page: f.page, limit: f.limit };
 
       if (f.search) params.search = f.search;
+      if (f.province && f.province !== "All provinces") {
+        params.province = f.province; 
+      }
 
       if (f.chickenType && f.chickenType !== "All types") {
         params.chicken_type = f.chickenType;
@@ -298,7 +302,8 @@ const HomePage = () => {
   const handleSearch = ({ query, province, chickenType }) => {
     setFilters((prev) => ({
       ...prev,
-      search: province || query || "",
+      search: query ?? prev.search,
+      province: province ?? prev.province,
       chickenType: chickenType ?? prev.chickenType,
       page: 1,
     }));
@@ -308,10 +313,12 @@ const HomePage = () => {
     setFilters((prev) => ({ ...prev, chickenType: type, page: 1 }));
   };
 
-  const handleFilterProvince = (province) => {
-    setFilters((prev) => ({ ...prev, 
-      search: province && province !== "All provinces" ? province : "", 
-      page: 1 }));
+  const handleFilterProvince = (prov) => {
+    setFilters((prev) => ({
+      ...prev,
+      province: prov && prov !== "All provinces" ? prov : null,
+      page: 1,
+    }));
   };
 
   const handlePageChange = (page) => {

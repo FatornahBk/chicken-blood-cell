@@ -600,8 +600,9 @@ const SearchBar = ({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = (overrideQuery = null) => {
+  const handleSearch = (overrideQuery = null, overrideProvince = null) => {
     const currentQuery = overrideQuery !== null ? overrideQuery : query;
+    const currentProvince = overrideProvince !== null ? overrideProvince : province;
 
     const resolvedChickenType =
       chickenType === "Chicken type" || chickenType === "All types"
@@ -615,9 +616,9 @@ const SearchBar = ({
 
     if (isHome) {
       const resolvedProvince =
-        province === "Province" || province === "All provinces"
+        currentProvince === "Province" || currentProvince === "All provinces"
           ? null
-          : province;
+          : currentProvince;
       onSearch?.({
         query: currentQuery,
         province: resolvedProvince,
@@ -701,6 +702,7 @@ const SearchBar = ({
             setProvince(val);
             const resolvedProv = (val === "All provinces" || val === "Province") ? null : val;
             onFilterProvince?.(resolvedProv);
+            handleSearch(query, val);
           }}
         />
       )}
