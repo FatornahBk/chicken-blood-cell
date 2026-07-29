@@ -503,9 +503,9 @@ export default function ProfilePage() {
 
   const STAIN_TYPE_MAP = { "wright stain": "wright", "giemsa stain": "giemsa" };
   const normalizeStainType = (val) => {
-    if (!val || val === "Stain Type") return null;
-    return STAIN_TYPE_MAP[val.trim().toLowerCase()] ?? null;
-  };
+  if (!val || val === "Stain Type" || val === "All types") return null;
+  return STAIN_TYPE_MAP[val.trim().toLowerCase()] ?? null;
+};
 
   const buildParams = useCallback(() => {
     const params = {
@@ -514,16 +514,29 @@ export default function ProfilePage() {
       suspendedPage: suspendedPage,
       limit: 10,
     };
-    if (query) params.smear_id = query;
-    if (chickenType) params.chicken_type = chickenType;
+
+    if (query?.trim()) params.smear_id = query.trim();
+
+    if (chickenType && chickenType !== "All types" && chickenType !== "Chicken type") {
+      params.chicken_type = chickenType;
+    }
+    
     const stain = normalizeStainType(stainType);
     if (stain) params.stain_type = stain;
+
     if (dateRange?.start) {
-      const start = new Date(dateRange.start);
-      const end = dateRange.end ? new Date(dateRange.end) : start;
-      params.startDate = start.toISOString().slice(0, 10);
-      params.endDate = end.toISOString().slice(0, 10);
-    }
+    const formatToYYYYMMDD = (date) => {
+      if (!date) return "";
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    params.startDate = formatToYYYYMMDD(dateRange.start);
+    params.endDate = formatToYYYYMMDD(dateRange.end || dateRange.start);
+  }
+
     return params;
   }, [
     query,
@@ -683,6 +696,14 @@ export default function ProfilePage() {
           onFilterChickenType={(val) => {
             setChickenType(
               val === "Chicken type" || val === "All types" ? null : val,
+            );
+            setPredictedPage(1);
+            setUnpredictedPage(1);
+            setSuspendedPage(1);
+          }}
+          onFilterStainType={(val) => {
+            setStainType(
+              val === "Stain Type" || val === "All types" ? null : val,
             );
             setPredictedPage(1);
             setUnpredictedPage(1);

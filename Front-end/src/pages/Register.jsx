@@ -31,6 +31,7 @@ export default function Register() {
     isVet: false,
     licenseNumber: "",
   });
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const [notification, setNotification] = useState(null);
 
@@ -41,8 +42,9 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -61,7 +63,7 @@ export default function Register() {
         navigate("/login");
       }, 4000);
     } else {
-      alert(result.message);
+      setError(result.message || "Registration failed. Please try again.");
     }
   };
 
@@ -204,6 +206,8 @@ export default function Register() {
               </div>
             )}
           </div>
+
+          {error && <p className="text-red-500 text-xs text-center pt-1">{error}</p>}
 
           <button
             type="submit"
