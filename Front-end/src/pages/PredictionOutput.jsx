@@ -1015,7 +1015,7 @@ export default function PredictionLogsPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      <Footer className="mt-0" />
 
       {isFullscreen &&
         selectedData &&

@@ -1,6 +1,6 @@
-const Footer = () => {
+const Footer = ({ className = "mt-16" }) => {
   return (
-    <footer className="mt-16 border-t border-gray-200 bg-white px-8 py-6">
+    <footer className={`${className} border-t border-gray-200 bg-white px-8 py-6`}>
       <div className="flex flex-col md:flex-row md:justify-between gap-8">
         <div>
           <h3 className="text-sm font-semibold text-gray-500">CBC - MEDICAL</h3>
